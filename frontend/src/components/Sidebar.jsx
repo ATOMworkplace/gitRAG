@@ -19,7 +19,7 @@ const NAV = [
   { label: "Home", href: "/home", icon: Home },
   { label: "AI", href: "/ai", icon: Brain },
   { label: "Repo", href: "/repo", icon: FolderGit2 },
-  { label: "Discuss", href: "/discuss", icon: Users }
+  { label: "Feedback", href: "/feedback", icon: Users }
 ];
 
 const Sidebar = ({ open, setOpen, onLogout }) => {
