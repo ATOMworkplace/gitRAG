@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "installCommand": "pip install -r backend/requirements.txt",
+  "installCommand": "pip install -r requirements.txt",
   "builds": [
     {
       "src": "api/index.py",
