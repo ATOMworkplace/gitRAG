@@ -1,0 +1,61 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+.Python
+
+# Editor and OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+
+# Local environment/config files
+.env
+.env.*
+*.local
+
+# Coverage and test output
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.cache/
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+
+# Mypy, pyright, pylance
+.mypy_cache/
+.pyrightcache/
+.pyre/
+.typings/
+
+# Distribution/packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Temporary repo clones, data, etc.
+tmp/
+temp/
+downloads/
+data/
+repos/
+
+# Docker
+docker-compose.override.yml

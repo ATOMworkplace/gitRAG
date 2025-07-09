@@ -1,0 +1,15 @@
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="32" cy="32" r="32" />
+    </clipPath>
+  </defs>
+
+  <image
+    href="./public/logo.png"
+    x="0"
+    y="0"
+    width="64"
+    height="64"
+    clip-path="url(#circleClip)"
+  />
+</svg>
