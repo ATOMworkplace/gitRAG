@@ -18,7 +18,7 @@ app.include_router(repo.router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173","https://git-rag.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
