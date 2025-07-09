@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import json
 import requests
+import os # Import os to access environment variables
+from dotenv import load_dotenv # Import load_dotenv
 
 from app.services.github_service import list_and_get_files, get_file_content_from_github
 from app.services.chunking_service import chunk_files_mem
@@ -18,6 +20,9 @@ from app.crud.active_repo import (
     delete_active_repo,
 )
 from app.crud.chat import delete_chat_namespace
+
+# Load environment variables from .env file for local development
+load_dotenv()
 
 # Request models
 class GetActiveRepoRequest(BaseModel):
@@ -79,10 +84,19 @@ async def ingest_repo(
             print("ERROR: No OpenAI API key set for this user.")
             raise HTTPException(status_code=401, detail="No OpenAI API key set for this user.")
 
+        # *** FIX STARTS HERE: Get GitHub Token and create auth headers ***
+        github_token = os.getenv("GITHUB_TOKEN")
+        auth_headers = {"Authorization": f"token {github_token}"} if github_token else {}
+        if not github_token:
+            print("WARNING: GITHUB_TOKEN environment variable not set. API calls may be rate limited.")
+
         parts = repo_url.rstrip("/").split("/")
         owner, repo = parts[-2], parts[-1]
         print("DEBUG: ingest_repo - owner:", owner, "repo:", repo)
-        files = list_and_get_files(owner, repo)
+        
+        # Pass the token to the service function
+        files = list_and_get_files(owner, repo, github_token)
+        
         print("DEBUG: ingest_repo - files count:", len(files))
         chunks = chunk_files_mem(files)
         print("DEBUG: ingest_repo - chunks count:", len(chunks))
@@ -90,16 +104,26 @@ async def ingest_repo(
         upsert_chunks_to_pinecone(chunks, namespace, openai_api_key)
         print("DEBUG: ingest_repo - upsert to pinecone done")
 
-        # ===== Advanced: Gather all GitHub metadata =====
+        # ===== Advanced: Gather all GitHub metadata with authentication =====
         GITHUB_API = "https://api.github.com"
-        headers = {"Accept": "application/vnd.github.v3+json"}
-        repo_info = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}", headers=headers).json()
-        languages = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/languages", headers=headers).json()
-        contributors = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/contributors", headers=headers).json()
-        topics = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/topics", headers={"Accept": "application/vnd.github.mercy-preview+json"}).json()
-        releases = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/releases", headers=headers).json()
+        
+        # Use the authenticated headers for all API calls
+        repo_info = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}", headers=auth_headers).json()
+        languages = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/languages", headers=auth_headers).json()
+        contributors = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/contributors", headers=auth_headers).json()
+        
+        # Special header for topics API
+        topics_headers = auth_headers.copy()
+        topics_headers["Accept"] = "application/vnd.github.mercy-preview+json"
+        topics = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/topics", headers=topics_headers).json()
+        
+        releases = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/releases", headers=auth_headers).json()
         try:
-            readme = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/readme", headers={"Accept": "application/vnd.github.v3.raw"}).text
+            readme_headers = auth_headers.copy()
+            readme_headers["Accept"] = "application/vnd.github.v3.raw"
+            readme_response = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/readme", headers=readme_headers)
+            readme_response.raise_for_status() # Raise an exception for bad status codes
+            readme = readme_response.text
         except Exception:
             readme = ""
 
@@ -124,11 +148,11 @@ async def ingest_repo(
             "contributors": [
                 {"login": c.get("login"), "contributions": c.get("contributions"), "avatar_url": c.get("avatar_url")}
                 for c in contributors[:10]
-            ] if contributors else [],
+            ] if isinstance(contributors, list) else [],
             "releases": [
                 {"name": r.get("name"), "tag": r.get("tag_name"), "published_at": r.get("published_at")}
                 for r in releases[:5]
-            ] if releases else [],
+            ] if isinstance(releases, list) else [],
             "readme": readme[:3000] + ("..." if len(readme) > 3000 else ""),
         }
 
@@ -198,7 +222,9 @@ async def get_file_content(
     parts = repo_url.rstrip("/").split("/")
     owner, repo = parts[-2], parts[-1]
     try:
-        content = get_file_content_from_github(owner, repo, body.file_path)
+        # *** FIX: Pass the token to the service function ***
+        github_token = os.getenv("GITHUB_TOKEN")
+        content = get_file_content_from_github(owner, repo, body.file_path, github_token)
         return {"content": content}
     except Exception as e:
         print("ERROR in get_file_content:", e)
