@@ -1,0 +1,26 @@
+# Ignore virtual environments
+.venv/
+venv/
+env/
+
+# Ignore local settings and secrets
+.env
+*.env.*
+*.env
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+
+# Ignore testing and local artifacts
+.pytest_cache/
+.cache/
+tests/
+test/
+build/
+dist/
+*.egg-info
+
+# Exclude numpy as it's often included in the Vercel runtime.
+# This can save a significant amount of space.
+numpy/
