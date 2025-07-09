@@ -2,6 +2,11 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuthError
 from sqlalchemy.orm import Session
+import os # Import the os module
+from dotenv import load_dotenv # Import load_dotenv
+
+# Load environment variables from .env file for local development
+load_dotenv()
 
 from app.core.config import BASE_URL, FRONT_END_URL
 from app.core.oauth import oauth
@@ -53,13 +58,21 @@ async def auth_callback(
             provider='google'
         )
     else:  # github
-        resp = await client.get('user', token=token)
+        # *** CHANGE IS HERE: Add Authorization header for GitHub API calls ***
+        github_token = os.getenv("GITHUB_TOKEN")
+        headers = {'Authorization': f'token {github_token}'} if github_token else {}
+
+        # Use the Authlib client's session to make authenticated requests
+        # The user's OAuth token is still needed for user-specific endpoints
+        resp = await client.get('user', token=token, headers=headers)
         info = resp.json()
         print(f"[DEBUG] GitHub userinfo: {info}")
         email = info.get('email')
+        
         # If email is None, try to fetch verified, primary email
         if not email:
-            emails_resp = await client.get('user/emails', token=token)
+            # Also use the header for this call
+            emails_resp = await client.get('user/emails', token=token, headers=headers)
             emails = emails_resp.json()
             print(f"[DEBUG] GitHub user emails: {emails}")
             email = ""
