@@ -4,14 +4,14 @@
   "installCommand": "pip install -r backend/requirements.txt",
   "builds": [
     {
-      "src": "backend/api/index.py",
+      "src": "backend/app/main.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "^/(.*)$",
-      "dest": "/backend/api/index.py"
+      "dest": "/backend/app/main.py"
     }
   ]
 }
