@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/app/main.py",
+      "src": "app/main.py",
       "use": "@vercel/python",
       "config": {
         "pre-install": "apt-get update && apt-get install -y libpq-dev"
@@ -12,7 +12,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "backend/app/main.py"
+      "dest": "app/main.py"
     }
   ]
 }
