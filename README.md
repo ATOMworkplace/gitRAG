@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/99065742-a793-4ec5-8bb5-231f37d3d50e
 
 
 
-## ⭐ Overview (STAR Method)
+## ⭐ Overview
 
 ### **Situation**
 As a participant in open-source competitions and project exhibitions (EPICS, university projects), I often struggled to deeply understand large codebases—especially when onboarding new repositories from group members or exploring unfamiliar open-source projects. Sifting through thousands of files, dependencies, and scattered documentation was **tedious and overwhelming**, making it hard to answer even basic questions like "Where is X implemented?" or "How does this module work?"
