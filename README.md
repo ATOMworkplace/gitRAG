@@ -1,7 +1,7 @@
 # gitRAG
 
 **RAG-based GitHub Repo Analysis Platform**  
-*Analyse and discuss any public GitHub repository with LLM-powered chat and advanced semantic search.*
+*Analyse any public GitHub repository with LLM-powered chat and advanced semantic search.*
 
 ---
 
