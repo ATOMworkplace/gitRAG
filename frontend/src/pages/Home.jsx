@@ -132,7 +132,7 @@ export default function Home() {
             {/* Left */}
             <div className="flex-1 min-w-[270px] md:min-w-[360px] max-w-lg flex flex-col items-start text-left z-10">
               <h1 className="text-4xl md:text-5xl font-extrabold mb-6 text-[#2ea043] leading-tight drop-shadow-lg">
-                Analyse & Discuss Any GitHub Repo with <span className="text-[#2ea043]">AI</span>
+                Analyse Any GitHub Repo with <span className="text-[#2ea043]">AI</span>
               </h1>
               <p className="text-lg text-gray-100 mb-6 drop-shadow-md max-w-sm">
                 <span className="font-medium">
