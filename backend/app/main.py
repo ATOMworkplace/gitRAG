@@ -38,7 +38,7 @@ app.include_router(ai.router, prefix="/api")
 app.include_router(repo.router, prefix="/api")
 
 
-@app.get('/')
+@app.get('/', methods=['GET', 'HEAD'])
 async def root():
     return {'message': 'RAG AI Chatbot Backend'}
 
