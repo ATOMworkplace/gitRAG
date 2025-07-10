@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
-import { BookOpen, MessageSquare, Search, GitBranch, Zap, Star, Users } from "lucide-react";
+import { Search, GitBranch, BarChart2, KeyRound, MessageSquare, Star } from "lucide-react";
 import PointCloudSphere from "../components/PointCloudSphere";
 
-// --- Typing Animation for gitRAG ---
+// Typing animation for logo
 function TypingGitRAG() {
   const text = "gitRAG";
   const [display, setDisplay] = useState("");
@@ -19,38 +19,38 @@ function TypingGitRAG() {
   return <span className="font-bold text-[#2ea043] ml-1">{display}</span>;
 }
 
-// --- Features grid ---
+// --- Feature list (aligned with your actual features) ---
 const features = [
   {
     icon: MessageSquare,
-    title: "Discuss & Understand",
-    description: "Chat with AI and other users about code structure, logic, or best practices.",
+    title: "AI Code Chat",
+    description: "Chat with an AI assistant to understand code, get summaries, and answer codebase questions."
   },
   {
-    icon: BookOpen,
-    title: "Make Notes",
-    description: "Document your thoughts, discoveries, and explanations directly within the codebase.",
+    icon: GitBranch,
+    title: "Hierarchical File View",
+    description: "Explore your repo’s complete file structure with direct file content preview and metadata."
+  },
+  {
+    icon: BarChart2,
+    title: "Repo Analytics",
+    description: "Get instant repo analytics—languages, stats, dependency graph, and contributors at a glance."
   },
   {
     icon: Search,
     title: "Semantic Code Search",
-    description: "Find code not just by text, but by meaning and structure.",
+    description: "Find files or functions using semantic search powered by embeddings—not just keywords."
   },
   {
-    icon: GitBranch,
-    title: "Analyze Repository",
-    description: "Visualize dependencies, stats, and file structure with ease.",
+    icon: KeyRound,
+    title: "Secure API Key Management",
+    description: "Your OpenAI API key is encrypted per-user, can be changed or removed at any time from the sidebar."
   },
   {
-    icon: Zap,
-    title: "Fast AI Insights",
-    description: "Instant feedback and explanation about functions, files, or entire projects.",
-  },
-  {
-    icon: Users,
-    title: "Team Collaboration",
-    description: "Share annotated code or notes with your team and learn together.",
-  },
+    icon: Star,
+    title: "One-Click Setup",
+    description: "Log in, paste a GitHub repo URL, and start chatting—no config or local setup needed."
+  }
 ];
 
 // --- Footer ---
@@ -132,11 +132,11 @@ export default function Home() {
             {/* Left */}
             <div className="flex-1 min-w-[270px] md:min-w-[360px] max-w-lg flex flex-col items-start text-left z-10">
               <h1 className="text-4xl md:text-5xl font-extrabold mb-6 text-[#2ea043] leading-tight drop-shadow-lg">
-                Understand Code Better With <span className="text-[#2ea043]">AI</span>
+                Analyse & Discuss Any GitHub Repo with <span className="text-[#2ea043]">AI</span>
               </h1>
               <p className="text-lg text-gray-100 mb-6 drop-shadow-md max-w-sm">
                 <span className="font-medium">
-                  Interact with your codebase using Retrieval-Augmented-Generative AI
+                  Paste a GitHub repo URL, add your OpenAI key, and start chatting with your codebase using advanced RAG AI.
                 </span>
               </p>
               <div className="flex flex-row gap-4 w-full">
@@ -144,7 +144,13 @@ export default function Home() {
                   href="/ai"
                   className="bg-[#2ea043] hover:bg-[#268839] px-8 py-4 rounded-lg font-semibold text-lg text-white transition-all duration-300 transform hover:scale-105 flex items-center gap-3 shadow-lg shadow-[#2ea043]/30"
                 >
-                  <Star size={20} /> Start Analyzing
+                  <MessageSquare size={20} /> AI Chat
+                </a>
+                <a
+                  href="/repo"
+                  className="bg-[#232b36] hover:bg-[#20252b] border border-[#2ea043] px-8 py-4 rounded-lg font-semibold text-lg text-[#2ea043] transition-all duration-300 transform hover:scale-105 flex items-center gap-3 shadow"
+                >
+                  <GitBranch size={20} /> Explore Repo
                 </a>
               </div>
             </div>
@@ -164,9 +170,9 @@ export default function Home() {
             <p className="text-lg text-gray-400">
               Features designed to help you{" "}
               <span className="text-[#2ea043]">
-                understand, annotate, and collaborate
+                chat, analyze, and explore
               </span>{" "}
-              on codebases smarter and faster.
+              codebases faster and smarter.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
