@@ -185,32 +185,44 @@ export default function Ai() {
   }, [chat, loadingChat]);
 
   async function fetchRepoMeta(repo_url) {
+    // This function now fetches data from YOUR backend, not GitHub's.
     try {
-      const m = repo_url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)(\/.*)?$/);
-      if (!m) return;
-      const owner = m[1], name = m[2];
-      const repoInfo = await fetch(`https://api.github.com/repos/${owner}/${name}`);
-      if (!repoInfo.ok) return;
-      const repoJson = await repoInfo.json();
+      const res = await fetch(`${BACKEND_URL}/repo/metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch repo metadata from backend");
+        setRepoData(null);
+        return;
+      }
+      
+      const data = await res.json();
+      const analytics = data.analytics; // Use the analytics object from your backend
+
+      // Set the repo data state for the RepoPanel component
       setRepoData({
-        name: repoJson.name,
-        owner: repoJson.owner?.login,
-        avatar_url: repoJson.owner?.avatar_url || "/logo.png",
-        stars: repoJson.stargazers_count || 0,
-        forks: repoJson.forks_count || 0,
-        description: repoJson.description || "",
-        html_url: repoJson.html_url,
-        homepage: repoJson.homepage,
-        main_language: repoJson.language,
-        license: repoJson.license?.spdx_id || repoJson.license?.name || "",
-        topics: repoJson.topics || [],
+        name: analytics.repo_name,
+        owner: analytics.owner,
+        avatar_url: analytics.contributors[0]?.avatar_url || "/logo.png",
+        stars: analytics.stars,
+        forks: analytics.forks,
+        description: analytics.description,
+        html_url: `https://github.com/${analytics.owner}/${analytics.repo_name}`,
+        homepage: analytics.homepage,
+        main_language: analytics.language,
+        license: analytics.license,
+        topics: analytics.topics,
         profile: {
-          name: repoJson.owner?.login,
-          avatar_url: repoJson.owner?.avatar_url || "/logo.png",
-          github: repoJson.owner?.html_url,
+          name: analytics.owner,
+          avatar_url: analytics.contributors[0]?.avatar_url || "/logo.png",
+          github: `https://github.com/${analytics.owner}`,
         },
       });
-    } catch {
+    } catch (err) {
+      console.error("Error in fetchRepoMeta:", err);
       setRepoData(null);
     }
   }

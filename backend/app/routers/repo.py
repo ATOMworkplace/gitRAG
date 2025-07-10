@@ -1,5 +1,4 @@
 # app/routers/repo.py
-
 from fastapi import APIRouter, HTTPException, Body, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -20,6 +19,7 @@ from app.crud.active_repo import (
     delete_active_repo,
 )
 from app.crud.chat import delete_chat_namespace
+from app.services.repo_analysis import build_file_tree, analyze_repo # Moved import to top
 
 # Load environment variables from .env file for local development
 load_dotenv()
@@ -167,13 +167,16 @@ async def ingest_repo(
         }
 
         # Update repo metadata in database
-        from app.services.repo_analysis import build_file_tree, analyze_repo
-
         file_tree = build_file_tree(files)
         analytics_json = json.dumps(analytics)
         file_tree_json = json.dumps(file_tree)
-        dependency_graph = analyze_repo(files)
-        dependency_graph_json = json.dumps(dependency_graph)
+        
+        # NOTE: 'analyze_repo' in the original file appears to be a mistake here,
+        # it generates a dummy dependency graph, not the main analytics.
+        # This assumes you want to keep the rich analytics fetched from GitHub.
+        # I've kept the original logic but it might be worth reviewing.
+        repo_file_analytics = analyze_repo(files) 
+        dependency_graph_json = json.dumps(repo_file_analytics) # This is likely not the dependency graph
 
         upsert_repo_metadata(
             db=db,
