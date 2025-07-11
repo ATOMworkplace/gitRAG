@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import os  
 
 app = FastAPI()
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+
 print("[DEBUG][main.py] FastAPI app created.")
 init_oauth(app)
 print("[DEBUG][main.py] OAuth initialized.")
@@ -42,10 +42,15 @@ app.include_router(ai.router, prefix="/api")
 app.include_router(repo.router, prefix="/api")
 print("[DEBUG][main.py] Routers included.")
 
-@app.get('/')
-async def root():
-    print("[DEBUG][main.py] / endpoint hit.")
-    return {'message': 'RAG AI Chatbot Backend'}
+# Comment out or remove the root route
+# @app.get('/')
+# async def root():
+#     print("[DEBUG][main.py] / endpoint hit.")
+#     return {'message': 'RAG AI Chatbot Backend'}
+
+# Mount static files last
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+print("[DEBUG][main.py] StaticFiles mounted.")
 
 if __name__ == '__main__':
     import uvicorn
