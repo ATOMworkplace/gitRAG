@@ -81,7 +81,7 @@ export default function Ai() {
       }
       setGlobalLoading({ show: true, messages: loadingMessages.restore, subtext: "" });
       try {
-        const res = await fetch(`${BACKEND_URL}/repo/get_active_repo`, {
+        const res = await fetch(`${BACKEND_URL}/api/repo/get_active_repo`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: user.id }),
@@ -117,7 +117,7 @@ export default function Ai() {
   async function fetchUserChatHistory(userId) {
     setGlobalLoading({ show: true, messages: loadingMessages.chatHistory, subtext: "" });
     try {
-      const res = await fetch(`${BACKEND_URL}/ai/get_chat_history`, {
+      const res = await fetch(`${BACKEND_URL}/api/ai/get_chat_history`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
@@ -149,7 +149,7 @@ export default function Ai() {
   async function handleDeleteMessage(msgId) {
     setGlobalLoading({ show: true, messages: loadingMessages.deleteMessage, subtext: "" });
     try {
-      await fetch(`${BACKEND_URL}/ai/delete_message?msg_id=${msgId}&user_id=${user.id}`, {
+      await fetch(`${BACKEND_URL}/api/ai/delete_message?msg_id=${msgId}&user_id=${user.id}`, {
         method: "DELETE",
       });
       await fetchUserChatHistory(user.id);
@@ -164,7 +164,7 @@ export default function Ai() {
         return;
       }
       try {
-        const res = await fetch(`${BACKEND_URL}/ai/get_openai_key`, {
+        const res = await fetch(`${BACKEND_URL}/api/ai/get_openai_key`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: user.id }),
@@ -187,7 +187,7 @@ export default function Ai() {
   async function fetchRepoMeta(repo_url) {
     // This function now fetches data from YOUR backend, not GitHub's.
     try {
-      const res = await fetch(`${BACKEND_URL}/repo/metadata`, {
+      const res = await fetch(`${BACKEND_URL}/api/repo/metadata`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id }),
@@ -240,7 +240,7 @@ export default function Ai() {
     setLoadingRepo(true);
     setGlobalLoading({ show: true, messages: loadingMessages.ingest, subtext: "Please do not close your browser. It's magic time." });
     try {
-      await fetch(`${BACKEND_URL}/repo/ingest_repo`, {
+      await fetch(`${BACKEND_URL}/api/repo/ingest_repo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -278,7 +278,7 @@ export default function Ai() {
     setLoadingChat(true);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/ai/chat`, {
+      const res = await fetch(`${BACKEND_URL}/api/ai/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -314,7 +314,7 @@ export default function Ai() {
     if (window.confirm("Switching repo will clear the current chat and context. Continue?")) {
       setGlobalLoading({ show: true, messages: loadingMessages.switchRepo, subtext: "" });
       try {
-        await fetch(`${BACKEND_URL}/repo/switch_repo`, {
+        await fetch(`${BACKEND_URL}/api/repo/switch_repo`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: user.id }),
