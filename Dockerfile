@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Step 3: Copy backend code and built frontend
 COPY backend/ .
-COPY --from=frontend /frontend ./frontend/dist
+COPY --from=frontend /frontend/dist ./frontend/dist
 
 # Step 4: Run FastAPI (will serve both API and frontend)
 EXPOSE 8000
