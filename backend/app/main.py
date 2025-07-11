@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from app.core.oauth import init_oauth
 from app.routers.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware # Import SessionMiddleware
+from starlette.middleware.sessions import SessionMiddleware  
 from app.routers import ai, repo
 from app.utils.db import engine, Base
 import os  
@@ -11,12 +11,6 @@ import os
 app = FastAPI()
 init_oauth(app)
 Base.metadata.create_all(bind=engine)
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.environ.get('SESSION_SECRET_KEY'),
-    https_only=True,   
-    same_site="none"     
-)
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +19,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get('SESSION_SECRET_KEY'),
+    https_only=True,   
+    same_site="none"     
+)
+
+
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
