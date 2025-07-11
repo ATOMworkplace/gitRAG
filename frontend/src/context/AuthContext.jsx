@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
 
 // You can set VITE_BACKEND_URL in .env (e.g., http://localhost:8000)
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 const AuthContext = createContext();
 
