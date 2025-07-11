@@ -44,7 +44,7 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
         return;
       }
       try {
-        const res = await fetch(`${BACKEND_URL}/ai/get_openai_key`, {
+        const res = await fetch(`${BACKEND_URL}api/ai/get_openai_key`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: user.id })
@@ -77,7 +77,7 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
     setError("");
     setApiKeyValid(false);
     try {
-      const res = await fetch(`${BACKEND_URL}/ai/validate_openai_key`, {
+      const res = await fetch(`${BACKEND_URL}api/ai/validate_openai_key`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,7 +92,7 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
         setApiKeyInput("");
         setError("");
         // Refresh masked key from backend
-        const keyRes = await fetch(`${BACKEND_URL}/ai/get_openai_key`, {
+        const keyRes = await fetch(`${BACKEND_URL}api/ai/get_openai_key`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: user.id })
@@ -122,7 +122,7 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
     setShowInput(false);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/ai/delete_openai_key`, {
+      const res = await fetch(`${BACKEND_URL}api/ai/delete_openai_key`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id })
