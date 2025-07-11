@@ -8,6 +8,7 @@ oauth = OAuth()
 
 def init_oauth(app: FastAPI):
     """Install session middleware and register OAuth clients."""
+    print("[DEBUG][oauth.py] Registering session middleware and OAuth clients.")
     # Session for OAuth state and storing user
     app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 
@@ -33,3 +34,4 @@ def init_oauth(app: FastAPI):
         api_base_url='https://api.github.com/',
         client_kwargs={'scope': 'user:email'},
     )
+    print("[DEBUG][oauth.py] OAuth clients registered.")
