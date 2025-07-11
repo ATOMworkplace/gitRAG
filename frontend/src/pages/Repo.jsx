@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000/api";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 // SVG icon components (all small)
 const FolderIcon = (props) => (
@@ -239,7 +239,7 @@ export default function Repo() {
       setSelectedFile(null);
       setFileContent("");
       try {
-        const res = await fetch(`${BACKEND_URL}/repo/metadata`, {
+        const res = await fetch(`${BACKEND_URL}/api/repo/metadata`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: user?.id }),
@@ -263,7 +263,7 @@ export default function Repo() {
     setFileContent("");
     setFileLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/repo/get_file_content`, {
+      const res = await fetch(`${BACKEND_URL}/api/repo/get_file_content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user?.id, file_path: filePath }),
