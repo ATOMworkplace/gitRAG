@@ -16,9 +16,9 @@ export function AuthProvider({ children }) {
 
   // Fetch user from backend session on mount
   useEffect(() => {
-    console.log("[DEBUG][AuthContext] Attempting to fetch user from backend:", `${BACKEND_URL}/user`);
+    console.log("[DEBUG][AuthContext] Attempting to fetch user from backend:", `${BACKEND_URL}/api/user`);
     axios
-      .get(`${BACKEND_URL}/user`, { withCredentials: true })
+      .get(`${BACKEND_URL}/api/user`, { withCredentials: true })
       .then((res) => {
         console.log("[DEBUG][AuthContext] Received user from backend:", res.data);
         setUser(res.data);
@@ -33,8 +33,8 @@ export function AuthProvider({ children }) {
 
   // Logout: clears backend session and local user state
   const logout = async () => {
-    console.log("[DEBUG][AuthContext] Logging out via backend:", `${BACKEND_URL}/logout`);
-    await axios.get(`${BACKEND_URL}/logout`, { withCredentials: true });
+    console.log("[DEBUG][AuthContext] Logging out via backend:", `${BACKEND_URL}/api/logout`);
+    await axios.get(`${BACKEND_URL}/api/logout`, { withCredentials: true });
     setUser(null);
     window.location.href = "/";
   };
