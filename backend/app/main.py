@@ -49,7 +49,8 @@ print("[DEBUG][main.py] Routers included.")
 #     return {'message': 'RAG AI Chatbot Backend'}
 
 # Mount static files last
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
+
 print("[DEBUG][main.py] StaticFiles mounted.")
 
 if __name__ == '__main__':
