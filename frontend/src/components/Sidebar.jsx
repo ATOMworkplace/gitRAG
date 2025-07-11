@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 const NAV = [
   { label: "Home", href: "/home", icon: Home },
