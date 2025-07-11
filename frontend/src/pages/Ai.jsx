@@ -8,7 +8,7 @@ import ChatPanel from "../components/ChatPanel";
 import { Github, AlertTriangle } from "lucide-react";
 
 // NOTE: API base is now /api
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000/api";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 const loadingMessages = {
   ingest: [
