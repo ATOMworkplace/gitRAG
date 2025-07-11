@@ -11,11 +11,7 @@ import os
 
 app = FastAPI()
 
-# 1. Mount static files (React build)
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
-print("[DEBUG][main.py] FastAPI app created.")
-
-# 2. Init everything else
+# 1. Init everything (not mounting static files yet!)
 init_oauth(app)
 print("[DEBUG][main.py] OAuth initialized.")
 Base.metadata.create_all(bind=engine)
@@ -27,7 +23,7 @@ app.add_middleware(
         "http://localhost:5173",
         "https://git-rag.vercel.app",
         "https://www.git-rag.com",
-        "https://gitrag-fo9z.onrender.com",  # Add your Render.com URL!
+        "https://gitrag-fo9z.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -43,28 +39,25 @@ app.add_middleware(
 )
 print("[DEBUG][main.py] Session middleware configured.")
 
+# 2. Register routers first!
 app.include_router(auth_router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(repo.router, prefix="/api")
 print("[DEBUG][main.py] Routers included.")
 
-# 3. SPA fallback for React Router: serve index.html for any non-API 404
+# 3. Now mount static files LAST (so /api/* never matches static handler)
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+print("[DEBUG][main.py] StaticFiles mounted.")
+
+# 4. SPA fallback for React Router: serve index.html for any non-API 404
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc):
-    # For API endpoints, return JSON 404
     if request.url.path.startswith("/api"):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
-    # For everything else, try to serve React index.html
     index_path = os.path.join("frontend", "dist", "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return JSONResponse({"detail": "Not Found"}, status_code=404)
-
-# (Optional) Remove the root route if not needed; SPA fallback handles "/"
-# @app.get('/')
-# async def root():
-#     print("[DEBUG][main.py] / endpoint hit.")
-#     return {'message': 'RAG AI Chatbot Backend'}
 
 if __name__ == '__main__':
     import uvicorn
