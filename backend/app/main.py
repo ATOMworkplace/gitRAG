@@ -5,9 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware  
 from app.routers import ai, repo
 from app.utils.db import engine, Base
+from fastapi.staticfiles import StaticFiles
 import os  
 
 app = FastAPI()
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 print("[DEBUG][main.py] FastAPI app created.")
 init_oauth(app)
 print("[DEBUG][main.py] OAuth initialized.")
@@ -22,7 +24,7 @@ app.add_middleware(
         "https://www.git-rag.com"
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 print("[DEBUG][main.py] CORS middleware configured.")
