@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from app.core.oauth import init_oauth
 from app.routers.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,7 +6,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.routers import ai, repo
 from app.utils.db import engine, Base
 from fastapi.staticfiles import StaticFiles
-import os  
+from fastapi.responses import FileResponse
+import os
 
 app = FastAPI()
 
@@ -21,7 +22,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "https://git-rag.vercel.app",
-        "https://www.git-rag.com"
+        "https://www.git-rag.com",
+        "https://gitrag-fo9z.onrender.com",  # add your deployed backend/frontend URL here!
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -31,7 +33,7 @@ print("[DEBUG][main.py] CORS middleware configured.")
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.environ.get('SESSION_SECRET_KEY'),
+    secret_key=os.environ.get('SESSION_SECRET_KEY', 'dev_secret_for_local'),  # fallback for local dev
     https_only=True,   
     same_site="none"     
 )
@@ -42,16 +44,20 @@ app.include_router(ai.router, prefix="/api")
 app.include_router(repo.router, prefix="/api")
 print("[DEBUG][main.py] Routers included.")
 
-# Comment out or remove the root route
-# @app.get('/')
-# async def root():
-#     print("[DEBUG][main.py] / endpoint hit.")
-#     return {'message': 'RAG AI Chatbot Backend'}
-
-# Mount static files last
+# Serve static files (React build)
 app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
-
 print("[DEBUG][main.py] StaticFiles mounted.")
+
+# Catch-all route for SPA (serves index.html for all unknown routes except API/static)
+@app.get("/{full_path:path}")
+async def spa_fallback(request: Request, full_path: str):
+    # Prevent interfering with /api routes
+    if full_path.startswith("api") or full_path.startswith("assets") or "." in full_path:
+        return FileResponse(os.path.join("frontend/dist", full_path))
+    # Otherwise serve index.html for React Router
+    index_path = os.path.join("frontend/dist", "index.html")
+    print(f"[DEBUG][main.py] SPA fallback for: {full_path}, serving index.html")
+    return FileResponse(index_path)
 
 if __name__ == '__main__':
     import uvicorn
