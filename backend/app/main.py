@@ -22,7 +22,7 @@ app.add_middleware(
         "https://www.git-rag.com"
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
 print("[DEBUG][main.py] CORS middleware configured.")
