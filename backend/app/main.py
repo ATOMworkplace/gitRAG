@@ -7,11 +7,15 @@ from app.routers import ai, repo
 from app.utils.db import engine, Base
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-import os
+import os  
 
 app = FastAPI()
 
+# 1. Mount static files first
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 print("[DEBUG][main.py] FastAPI app created.")
+
+# 2. Init everything else
 init_oauth(app)
 print("[DEBUG][main.py] OAuth initialized.")
 Base.metadata.create_all(bind=engine)
@@ -22,8 +26,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "https://git-rag.vercel.app",
-        "https://www.git-rag.com",
-        "https://gitrag-fo9z.onrender.com",  # add your deployed backend/frontend URL here!
+        "https://www.git-rag.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -33,7 +36,7 @@ print("[DEBUG][main.py] CORS middleware configured.")
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.environ.get('SESSION_SECRET_KEY', 'dev_secret_for_local'),  # fallback for local dev
+    secret_key=os.environ.get('SESSION_SECRET_KEY'),
     https_only=True,   
     same_site="none"     
 )
@@ -44,20 +47,25 @@ app.include_router(ai.router, prefix="/api")
 app.include_router(repo.router, prefix="/api")
 print("[DEBUG][main.py] Routers included.")
 
-# Serve static files (React build)
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
-print("[DEBUG][main.py] StaticFiles mounted.")
+# 3. SPA fallback for React Router: serve index.html for any non-API 404
+from fastapi.responses import FileResponse
+from fastapi.exception_handlers import RequestValidationError
+from fastapi.exceptions import RequestValidationError as FastAPIRequestValidationError
 
-# Catch-all route for SPA (serves index.html for all unknown routes except API/static)
-@app.get("/{full_path:path}")
-async def spa_fallback(request: Request, full_path: str):
-    # Prevent interfering with /api routes
-    if full_path.startswith("api") or full_path.startswith("assets") or "." in full_path:
-        return FileResponse(os.path.join("frontend/dist", full_path))
-    # Otherwise serve index.html for React Router
-    index_path = os.path.join("frontend/dist", "index.html")
-    print(f"[DEBUG][main.py] SPA fallback for: {full_path}, serving index.html")
-    return FileResponse(index_path)
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    if request.url.path.startswith("/api"):
+        return {"detail": "Not Found"}  # normal 404 for API
+    index_path = os.path.join("frontend", "dist", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"detail": "Not Found"}
+
+# Optional: remove the old `/` route
+# @app.get('/')
+# async def root():
+#     print("[DEBUG][main.py] / endpoint hit.")
+#     return {'message': 'RAG AI Chatbot Backend'}
 
 if __name__ == '__main__':
     import uvicorn
