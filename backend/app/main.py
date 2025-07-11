@@ -14,7 +14,7 @@ Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://git-rag.vercel.app","https://www.git-rag.com"],
+    allow_origins=["https://www.git-rag.com","https://git-rag.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
