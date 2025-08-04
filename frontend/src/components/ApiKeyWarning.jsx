@@ -9,6 +9,7 @@ export default function ApiKeyWarning() {
         <span className="font-semibold">OpenAI API Key Missing</span>
       </div>
       <p>You have not added your OpenAI API key.</p>
+      <p className="text-white">You can either create or SIMPLY SEARCH DUMMY OPEN API KEYS ON GOOGLE TO GET FREE OPEN API KEYS</p>
       <p>Please add your key from the sidebar before accessing GitHub repo chat or analysis features.</p>
       <p className="text-white">And refresh the page once you have added your OpenAI API key.</p>
     </div>
