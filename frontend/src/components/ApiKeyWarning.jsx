@@ -9,7 +9,7 @@ export default function ApiKeyWarning() {
         <span className="font-semibold">OpenAI API Key Missing</span>
       </div>
       <p>You have not added your OpenAI API key.</p>
-      <p className="text-white">You can either create or Search "https://github.com/dan1471/FREE-openai-api-keys" </p>
+      <p className="text-white">You can either create or FOR ONLY EDUCATIONAL AND TESTING PURPOSES Search "https://github.com/dan1471/FREE-openai-api-keys" </p>
       <p className="text-red-400 text-sm">
         <span className="font-bold">Disclaimer:</span> The API keys provided in this repository are for educational and testing purposes only. Using these keys for production purposes or any activity that violates OpenAI's terms of service is strictly prohibited.
       </p>
