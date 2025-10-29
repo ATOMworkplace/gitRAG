@@ -9,6 +9,30 @@
 https://github.com/user-attachments/assets/99065742-a793-4ec5-8bb5-231f37d3d50e
 
 
+---
+
+
+## 🧪 Clone & Run Locally
+
+1. Clone the repository 
+- gh repo clone ATOMworkplace/gitRAG
+- cd gitRAG
+
+2. Backend setup
+- cd backend
+- pip install -r requirements.txt
+
+3. Run backend (from backend directory)
+- python -m app.main
+
+4. Frontend setup (in a new terminal)
+- cd frontend
+- npm install
+- npm run dev
+
+
+---
+
 
 ## ⭐ Overview
 
