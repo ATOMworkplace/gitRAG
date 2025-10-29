@@ -4,10 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { Bug, AlertTriangle, MessageSquare, Send, CheckCircle } from "lucide-react";
 import emailjs from "@emailjs/browser";
 
-const EMAILJS_SERVICE_ID = import.meta.env.EMAILJS_SERVICE_ID;
-const EMAILJS_TEMPLATE_ID = import.meta.env.EMAILJS_TEMPLATE_ID;
-const EMAILJS_PUBLIC_KEY  = import.meta.env.EMAILJS_PUBLIC_KEY;
-// --- Typing Animation for gitRAG ---
 function TypingGitRAG() {
   const text = "gitRAG";
   const [display, setDisplay] = useState("");
@@ -22,14 +18,12 @@ function TypingGitRAG() {
   return <span className="font-bold text-[#2ea043] ml-1">{display}</span>;
 }
 
-// --- Feedback Categories ---
 const feedbackCategories = [
   { icon: Bug, title: "Bug Report", description: "Report any bugs, errors, or unexpected behavior", color: "text-red-400", bgColor: "bg-red-400/10" },
   { icon: AlertTriangle, title: "Feature Request", description: "Suggest new features or improvements", color: "text-yellow-400", bgColor: "bg-yellow-400/10" },
   { icon: MessageSquare, title: "General Feedback", description: "Share your thoughts and suggestions", color: "text-blue-400", bgColor: "bg-blue-400/10" },
 ];
 
-// --- Footer ---
 function Footer({ user }) {
   return (
     <footer className="w-full bg-[#161b22] border-t border-[#232b36] py-8 mt-16">
@@ -67,11 +61,38 @@ export default function Feedback() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [emailConfig, setEmailConfig] = useState(null);
+  const [configError, setConfigError] = useState("");
+  const [configLoading, setConfigLoading] = useState(true);
 
-  // Auto-fill browser and system info
   useEffect(() => {
     const browserInfo = `Browser: ${navigator.userAgent}\nScreen Resolution: ${screen.width}x${screen.height}\nTimezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}\nLanguage: ${navigator.language}`;
     setFormData((prev) => ({ ...prev, browserInfo }));
+  }, []);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      setConfigLoading(true);
+      setConfigError("");
+      try {
+        const res = await fetch("https://www.git-rag.com/api/discuss/config", { credentials: "include" });
+        if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`);
+        const data = await res.json();
+        if (!data?.emailjs_service_id || !data?.emailjs_template_id || !data?.emailjs_public_key) {
+          throw new Error("Config missing required keys");
+        }
+        setEmailConfig({
+          serviceId: data.emailjs_service_id,
+          templateId: data.emailjs_template_id,
+          publicKey: data.emailjs_public_key,
+        });
+      } catch (err) {
+        setConfigError("Unable to load email configuration. Please try again later.");
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+    loadConfig();
   }, []);
 
   const handleInputChange = (e) => {
@@ -79,7 +100,6 @@ export default function Feedback() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Ensure "N/A" for empties
   const orNA = (v, fallback = "N/A") => {
     if (v === null || v === undefined) return fallback;
     if (typeof v === "string" && v.trim() === "") return fallback;
@@ -90,16 +110,13 @@ export default function Feedback() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-      
-      console.error("Missing EmailJS env vars. Check your .env and prefixes.");
+    if (!emailConfig?.serviceId || !emailConfig?.templateId || !emailConfig?.publicKey) {
       alert("Email service not configured. Please contact support.");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      // EXACT keys that your EmailJS template uses
       const templateParams = {
         name: orNA(user?.name || user?.login || "Anonymous User"),
         time: new Date().toLocaleString(),
@@ -115,10 +132,10 @@ export default function Feedback() {
       };
 
       await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
+        emailConfig.serviceId,
+        emailConfig.templateId,
         templateParams,
-        EMAILJS_PUBLIC_KEY
+        emailConfig.publicKey
       );
 
       setSubmitted(true);
@@ -129,11 +146,10 @@ export default function Feedback() {
         steps: "",
         expectedBehavior: "",
         actualBehavior: "",
-        browserInfo: formData.browserInfo, // keep this autofilled value
+        browserInfo: formData.browserInfo,
         additionalInfo: "",
       });
     } catch (error) {
-      console.error("Error submitting feedback:", error);
       alert("Failed to submit feedback. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -143,7 +159,6 @@ export default function Feedback() {
   if (submitted) {
     return (
       <div className="flex min-h-screen bg-[#161b22] flex-col relative">
-        {/* --- NAVBAR --- */}
         <div className="flex items-center justify-between px-6 py-4 bg-[#161b22] border-b border-[#21262d] w-full">
           <div className="flex items-center gap-2">
             <img src="/logo.png" className="h-8 w-8 rounded-full" alt="gitRAG" />
@@ -165,8 +180,6 @@ export default function Feedback() {
           )}
         </div>
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-
-        {/* Success Message */}
         <main className="flex flex-col flex-1 items-center justify-center bg-[#161b22] text-gray-200 p-4 sm:p-8 w-full">
           <div className="max-w-2xl w-full text-center">
             <div className="bg-[#21262d] border border-[#2ea04322] rounded-2xl p-8 shadow-lg">
@@ -174,9 +187,6 @@ export default function Feedback() {
               <h1 className="text-3xl font-bold mb-4 text-[#2ea043]">Thank You!</h1>
               <p className="text-lg text-gray-300 mb-6">
                 Your feedback has been successfully submitted. We appreciate you taking the time to help us improve gitRAG.
-              </p>
-              <p className="text-gray-400 mb-8">
-                We'll review your feedback and get back to you if needed. Your input helps us make gitRAG better for everyone.
               </p>
               <div className="flex gap-4 justify-center">
                 <button
@@ -202,7 +212,6 @@ export default function Feedback() {
 
   return (
     <div className="flex min-h-screen bg-[#161b22] flex-col relative">
-      {/* --- NAVBAR --- */}
       <div className="flex items-center justify-between px-6 py-4 bg-[#161b22] border-b border-[#21262d] w-full">
         <div className="flex items-center gap-2">
           <img src="/logo.png" className="h-8 w-8 rounded-full" alt="gitRAG" />
@@ -225,10 +234,8 @@ export default function Feedback() {
       </div>
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
-      {/* --- MAIN CONTENT --- */}
       <main className="flex flex-col flex-1 items-center bg-[#161b22] text-gray-200 p-4 sm:p-8 w-full">
         <div className="max-w-4xl w-full">
-          {/* Header */}
           <div className="text-center mb-8 mt-8">
             <h1 className="text-4xl md:text-5xl font-extrabold mb-6 text-[#2ea043] leading-tight">
               Help Us Improve gitRAG
@@ -241,12 +248,11 @@ export default function Feedback() {
             </p>
           </div>
 
-          {/* Feedback Categories */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {feedbackCategories.map((category, i) => (
               <div
                 key={i}
-                className={`bg-[#21262d] border border-[#2ea04322] rounded-2xl p-6 flex flex-col gap-4 shadow-md hover:shadow-[#2ea04333] transition-transform duration-300 hover:scale-105 group`}
+                className="bg-[#21262d] border border-[#2ea04322] rounded-2xl p-6 flex flex-col gap-4 shadow-md hover:shadow-[#2ea04333] transition-transform duration-300 hover:scale-105 group"
               >
                 <div className="flex items-center gap-3">
                   <div className={`${category.bgColor} p-3 rounded-xl`}>
@@ -261,137 +267,135 @@ export default function Feedback() {
             ))}
           </div>
 
-          {/* Feedback Form */}
           <div className="bg-[#21262d] border border-[#2ea04322] rounded-2xl p-8 shadow-lg">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Category Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Feedback Category *</label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent"
-                  required
-                >
-                  <option value="bug">Bug Report</option>
-                  <option value="feature">Feature Request</option>
-                  <option value="general">General Feedback</option>
-                </select>
-              </div>
+            {configLoading ? (
+              <div className="text-center text-gray-400">Loading configuration…</div>
+            ) : configError ? (
+              <div className="text-center text-red-400">{configError}</div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Feedback Category *</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent"
+                    required
+                  >
+                    <option value="bug">Bug Report</option>
+                    <option value="feature">Feature Request</option>
+                    <option value="general">General Feedback</option>
+                  </select>
+                </div>
 
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Title *</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="Brief description of your feedback"
-                  className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent"
-                  required
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Title *</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="Brief description of your feedback"
+                    className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent"
+                    required
+                  />
+                </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description *</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  placeholder="Please provide a detailed description of your feedback"
-                  className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
-                  required
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Description *</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={4}
+                    placeholder="Please provide a detailed description of your feedback"
+                    className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
+                    required
+                  />
+                </div>
 
-              {/* Bug-specific fields */}
-              {formData.category === "bug" && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Steps to Reproduce</label>
-                    <textarea
-                      name="steps"
-                      value={formData.steps}
-                      onChange={handleInputChange}
-                      rows={3}
-                      placeholder={`1. Go to...\n2. Click on...\n3. See error...`}
-                      className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {formData.category === "bug" && (
+                  <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Expected Behavior</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Steps to Reproduce</label>
                       <textarea
-                        name="expectedBehavior"
-                        value={formData.expectedBehavior}
+                        name="steps"
+                        value={formData.steps}
                         onChange={handleInputChange}
                         rows={3}
-                        placeholder="What should happen?"
+                        placeholder={`1. Go to...\n2. Click on...\n3. See error...`}
                         className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Actual Behavior</label>
-                      <textarea
-                        name="actualBehavior"
-                        value={formData.actualBehavior}
-                        onChange={handleInputChange}
-                        rows={3}
-                        placeholder="What actually happens?"
-                        className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Expected Behavior</label>
+                        <textarea
+                          name="expectedBehavior"
+                          value={formData.expectedBehavior}
+                          onChange={handleInputChange}
+                          rows={3}
+                          placeholder="What should happen?"
+                          className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Actual Behavior</label>
+                        <textarea
+                          name="actualBehavior"
+                          value={formData.actualBehavior}
+                          onChange={handleInputChange}
+                          rows={3}
+                          placeholder="What actually happens?"
+                          className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
 
-              {/* Additional Information */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Additional Information</label>
-                <textarea
-                  name="additionalInfo"
-                  value={formData.additionalInfo}
-                  onChange={handleInputChange}
-                  rows={3}
-                  placeholder="Any additional context, screenshots, or information that might be helpful"
-                  className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Additional Information</label>
+                  <textarea
+                    name="additionalInfo"
+                    value={formData.additionalInfo}
+                    onChange={handleInputChange}
+                    rows={3}
+                    placeholder="Any additional context, screenshots, or information that might be helpful"
+                    className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
+                  />
+                </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-center pt-4">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`bg-[#2ea043] hover:bg-[#268839] px-8 py-4 rounded-lg font-semibold text-lg text-white transition-all duration-300 transform hover:scale-105 flex items-center gap-3 shadow-lg shadow-[#2ea043]/30 ${
-                    isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Send size={20} />
-                      Submit Feedback
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+                <div className="flex justify-center pt-4">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`bg-[#2ea043] hover:bg-[#268839] px-8 py-4 rounded-lg font-semibold text-lg text-white transition-all duration-300 transform hover:scale-105 flex items-center gap-3 shadow-lg shadow-[#2ea043]/30 ${
+                      isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={20} />
+                        Submit Feedback
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </main>
 
-      {/* --- Footer --- */}
       <Footer user={user} />
     </div>
   );
