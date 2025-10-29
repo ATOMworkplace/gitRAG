@@ -92,6 +92,8 @@ export default function Feedback() {
     setIsSubmitting(true);
 
     if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+      
+      console.log(EMAILJS_PUBLIC_KEY)
       console.error("Missing EmailJS env vars. Check your .env and prefixes.");
       alert("Email service not configured. Please contact support.");
       setIsSubmitting(false);
