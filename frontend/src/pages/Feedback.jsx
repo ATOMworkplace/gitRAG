@@ -92,7 +92,7 @@ export default function Feedback() {
 
     if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
       
-      console.log('Service ID:', import.meta.env.VITE_EMAILJS_SERVICE_ID);
+      console.log('Service ID:', import.meta.env.VITE_BACKEND_URL);
       console.log('All env vars:', import.meta.env);
       console.error("Missing EmailJS env vars. Check your .env and prefixes.");
       alert("Email service not configured. Please contact support.");
