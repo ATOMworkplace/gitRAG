@@ -9,8 +9,18 @@
 https://github.com/user-attachments/assets/99065742-a793-4ec5-8bb5-231f37d3d50e
 
 
+---
 
-## ⭐ Overview
+# Run Locally (production-style):
+- docker build -t gitrag .
+- docker run --env-file backend/.env -p 8000:8000 gitrag
+- Open http://localhost:8000
+
+
+---
+
+
+## Overview
 
 ### **Situation**
 As a participant in open-source competitions and project exhibitions (EPICS, university projects), I often struggled to deeply understand large codebases—especially when onboarding new repositories from group members or exploring unfamiliar open-source projects. Sifting through thousands of files, dependencies, and scattered documentation was **tedious and overwhelming**, making it hard to answer even basic questions like "Where is X implemented?" or "How does this module work?"
@@ -38,7 +48,7 @@ I independently designed and built **gitRAG**—an end-to-end, multi-tenant plat
 
 ---
 
-## 🚀 Features
+## Features
 
 - **LLM-powered code chat:** Ask questions about repo structure, functions, or files—get contextual, AI-driven answers.
 - **Semantic code search:** Find relevant code snippets using meaning, not just keywords.
@@ -51,7 +61,7 @@ I independently designed and built **gitRAG**—an end-to-end, multi-tenant plat
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend:** React.js, TailwindCSS, Vite, Three.js
 - **Backend:** FastAPI (Python), LangChain, PostgreSQL (Aiven), PineconeDB
@@ -61,7 +71,7 @@ I independently designed and built **gitRAG**—an end-to-end, multi-tenant plat
 
 ---
 
-## 📷 Demo
+## Demo
 
 <img width="1919" height="969" alt="image" src="https://github.com/user-attachments/assets/7b48f5f0-2e21-44c0-aa8f-2a39c9283d46" />
 
@@ -75,7 +85,7 @@ I independently designed and built **gitRAG**—an end-to-end, multi-tenant plat
 
 ---
 
-## ⚡ How it Works (RAG Pipeline)
+## How it Works (RAG Pipeline)
 
 1. **Login** with Google or GitHub OAuth2 (secure, per-user).
 2. **Paste any public GitHub repo URL** and your OpenAI API key (encrypted).
@@ -93,11 +103,11 @@ I independently designed and built **gitRAG**—an end-to-end, multi-tenant plat
    - Repo analytics panel for high-level insights
 
 ---
-## 🧩 Architecture
+## Architecture
 
 <img width="2864" height="1856" alt="image" src="https://github.com/user-attachments/assets/33a09e0f-8310-4f4c-8078-7d73c5843247" />
 
-## ✨ Example Use Cases
+## Example Use Cases
 
 - **Hackathons/open-source events:** Instantly understand any team repo or competition project.
 - **University coursework:** Quickly onboard and analyze group project submissions.
