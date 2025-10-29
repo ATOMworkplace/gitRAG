@@ -67,54 +67,37 @@ async def ingest_repo(
     If another repo was previously active for this user, all previous repo data is deleted.
     """
     try:
-        print("DEBUG: ingest_repo - user_id:", user_id, "repo_url:", repo_url)
         previous_repo_url = get_active_repo(db, user_id)
         if previous_repo_url:
             prev_repo = previous_repo_url.rstrip("/").split("/")[-1]
             prev_namespace = f"{user_id}_{prev_repo}"
-            print("DEBUG: ingest_repo - cleaning up previous namespace:", prev_namespace)
             delete_pinecone_namespace(prev_namespace)
             delete_chat_namespace(db, prev_namespace)
             delete_active_repo(db, user_id)
 
         openai_api_key = get_api_key(db, user_id)
         if not openai_api_key:
-            print("ERROR: No OpenAI API key set for this user.")
             raise HTTPException(status_code=401, detail="No OpenAI API key set for this user.")
 
         github_token = os.getenv("GITHUB_TOKEN")
-        if github_token:
-            print(f"DEBUG: GITHUB_TOKEN found, starts with: {github_token[:6]}")
-        else:
-            print("WARNING: GITHUB_TOKEN environment variable not set. API calls may be rate limited.")
         auth_headers = {"Authorization": f"token {github_token}"} if github_token else {}
 
         parts = repo_url.rstrip("/").split("/")
         owner, repo = parts[-2], parts[-1]
-        print("DEBUG: ingest_repo - owner:", owner, "repo:", repo)
 
         # Fetch files with logging (token is passed and used in service)
         files = list_and_get_files(owner, repo, github_token=github_token)
-
-        print("DEBUG: ingest_repo - files count:", len(files))
         chunks = chunk_files_mem(files)
-        print("DEBUG: ingest_repo - chunks count:", len(chunks))
         namespace = f"{user_id}_{repo}"
         upsert_chunks_to_pinecone(chunks, namespace, openai_api_key)
-        print("DEBUG: ingest_repo - upsert to pinecone done")
 
-        # ===== Gather GitHub metadata with authentication and log responses =====
         GITHUB_API = "https://api.github.com"
 
         def github_get(url, headers=auth_headers, desc=""):
-            print(f"DEBUG: GET {url} {desc} HEADERS: {bool(headers.get('Authorization'))}")
             resp = requests.get(url, headers=headers)
-            print(f"DEBUG: {desc} -> Status {resp.status_code}")
             if resp.status_code == 403:
-                print(f"ERROR: 403 from {desc}: {resp.json()}")
                 # Rate limit info
                 rl_resp = requests.get(f"{GITHUB_API}/rate_limit", headers=headers)
-                print("DEBUG: Rate limit status:", rl_resp.json())
             return resp
 
         repo_info = github_get(f"{GITHUB_API}/repos/{owner}/{repo}", desc="repo_info").json()
@@ -130,11 +113,9 @@ async def ingest_repo(
             readme_headers = auth_headers.copy()
             readme_headers["Accept"] = "application/vnd.github.v3.raw"
             readme_response = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/readme", headers=readme_headers)
-            print(f"DEBUG: readme -> Status {readme_response.status_code}")
             readme_response.raise_for_status()
             readme = readme_response.text
         except Exception as e:
-            print(f"ERROR: fetching readme: {e}")
             readme = ""
 
         analytics = {
@@ -190,7 +171,6 @@ async def ingest_repo(
 
         return {"ok": True, "namespace": namespace}
     except Exception as e:
-        print("ERROR in ingest_repo:", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/switch_repo")
@@ -204,13 +184,11 @@ async def switch_repo(
         if repo_url:
             repo = repo_url.rstrip("/").split("/")[-1]
             namespace = f"{user_id}_{repo}"
-            print("DEBUG: switch_repo - deleting namespace:", namespace)
             delete_pinecone_namespace(namespace)
             delete_chat_namespace(db, namespace)
             delete_active_repo(db, user_id)
         return {"ok": True}
     except Exception as e:
-        print("ERROR in switch_repo:", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/get_active_repo")
@@ -236,5 +214,4 @@ async def get_file_content(
         content = get_file_content_from_github(owner, repo, body.file_path, github_token=github_token)
         return {"content": content}
     except Exception as e:
-        print("ERROR in get_file_content:", e)
         raise HTTPException(status_code=500, detail="Failed to fetch file content.")

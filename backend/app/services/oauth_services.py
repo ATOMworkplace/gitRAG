@@ -4,7 +4,6 @@ from app.utils.db import get_db_connection
 class OAuthService:
     @staticmethod
     def save_user(user):
-        print("[DEBUG][OAuthService] Saving user to DB:", user)
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
@@ -22,4 +21,3 @@ class OAuthService:
         conn.commit()
         cur.close()
         conn.close()
-        print("[DEBUG][OAuthService] User saved/updated in DB.")
