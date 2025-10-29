@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@liveblocks/client": "^3.1.2",
     "@liveblocks/react": "^3.1.2",
     "@liveblocks/react-ui": "^3.1.2",

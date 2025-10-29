@@ -1,7 +1,24 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
-import { Bug, AlertTriangle, MessageSquare, Send, CheckCircle, Star } from "lucide-react";
+import { Bug, AlertTriangle, MessageSquare, Send, CheckCircle } from "lucide-react";
+import emailjs from "@emailjs/browser";
+
+// Resolve env vars for Vite / Next.js / CRA
+const EMAILJS_SERVICE_ID =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_EMAILJS_SERVICE_ID) ||
+  process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ||
+  process.env.REACT_APP_EMAILJS_SERVICE_ID;
+
+const EMAILJS_TEMPLATE_ID =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_EMAILJS_TEMPLATE_ID) ||
+  process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ||
+  process.env.REACT_APP_EMAILJS_TEMPLATE_ID;
+
+const EMAILJS_PUBLIC_KEY =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_EMAILJS_PUBLIC_KEY) ||
+  process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY ||
+  process.env.REACT_APP_EMAILJS_PUBLIC_KEY;
 
 // --- Typing Animation for gitRAG ---
 function TypingGitRAG() {
@@ -20,27 +37,9 @@ function TypingGitRAG() {
 
 // --- Feedback Categories ---
 const feedbackCategories = [
-  {
-    icon: Bug,
-    title: "Bug Report",
-    description: "Report any bugs, errors, or unexpected behavior",
-    color: "text-red-400",
-    bgColor: "bg-red-400/10",
-  },
-  {
-    icon: AlertTriangle,
-    title: "Feature Request",
-    description: "Suggest new features or improvements",
-    color: "text-yellow-400",
-    bgColor: "bg-yellow-400/10",
-  },
-  {
-    icon: MessageSquare,
-    title: "General Feedback",
-    description: "Share your thoughts and suggestions",
-    color: "text-blue-400",
-    bgColor: "bg-blue-400/10",
-  },
+  { icon: Bug, title: "Bug Report", description: "Report any bugs, errors, or unexpected behavior", color: "text-red-400", bgColor: "bg-red-400/10" },
+  { icon: AlertTriangle, title: "Feature Request", description: "Suggest new features or improvements", color: "text-yellow-400", bgColor: "bg-yellow-400/10" },
+  { icon: MessageSquare, title: "General Feedback", description: "Share your thoughts and suggestions", color: "text-blue-400", bgColor: "bg-blue-400/10" },
 ];
 
 // --- Footer ---
@@ -49,11 +48,7 @@ function Footer({ user }) {
     <footer className="w-full bg-[#161b22] border-t border-[#232b36] py-8 mt-16">
       <div className="max-w-4xl mx-auto flex flex-col items-center gap-3">
         <div className="flex items-center gap-3 mb-1">
-          <img
-            src="/logo.png"
-            className="h-10 w-10 rounded-full border border-[#2ea043] shadow"
-            alt="gitRAG"
-          />
+          <img src="/logo.png" className="h-10 w-10 rounded-full border border-[#2ea043] shadow" alt="gitRAG" />
           <span className="text-gray-400 text-lg font-bold tracking-wide">gitRAG</span>
         </div>
         <span className="text-gray-400 text-xs mb-1">
@@ -61,11 +56,7 @@ function Footer({ user }) {
         </span>
         {user && (
           <span className="flex items-center gap-2 text-xs text-gray-500">
-            <img
-              src={user.avatar_url || user.picture || "/logo.png"}
-              className="h-7 w-7 rounded-full border border-[#2ea043]"
-              alt="Profile"
-            />
+            <img src={user?.avatar_url || user?.picture || "/logo.png"} className="h-7 w-7 rounded-full border border-[#2ea043]" alt="Profile" />
             {user.name || user.login || user.email}
           </span>
         )}
@@ -93,62 +84,55 @@ export default function Feedback() {
   // Auto-fill browser and system info
   useEffect(() => {
     const browserInfo = `Browser: ${navigator.userAgent}\nScreen Resolution: ${screen.width}x${screen.height}\nTimezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}\nLanguage: ${navigator.language}`;
-    setFormData(prev => ({ ...prev, browserInfo }));
+    setFormData((prev) => ({ ...prev, browserInfo }));
   }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Ensure "N/A" for empties
+  const orNA = (v, fallback = "N/A") => {
+    if (v === null || v === undefined) return fallback;
+    if (typeof v === "string" && v.trim() === "") return fallback;
+    return v;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+      console.error("Missing EmailJS env vars. Check your .env and prefixes.");
+      alert("Email service not configured. Please contact support.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Prepare email data
-      const emailData = {
-        to: "charchitgithub@gmail.com",
-        subject: `[gitRAG Feedback] ${formData.category.toUpperCase()}: ${formData.title}`,
-        body: `
-Feedback Category: ${formData.category.toUpperCase()}
-Title: ${formData.title}
-User: ${user?.name || user?.login || user?.email || "Anonymous"}
-User Email: ${user?.email || "Not provided"}
-Submitted: ${new Date().toISOString()}
-
-Description:
-${formData.description}
-
-${formData.category === "bug" ? `
-Steps to Reproduce:
-${formData.steps}
-
-Expected Behavior:
-${formData.expectedBehavior}
-
-Actual Behavior:
-${formData.actualBehavior}
-` : ""}
-
-Browser/System Information:
-${formData.browserInfo}
-
-Additional Information:
-${formData.additionalInfo}
-
----
-This feedback was submitted through the gitRAG feedback form.
-        `.trim()
+      // EXACT keys that your EmailJS template uses
+      const templateParams = {
+        name: orNA(user?.name || user?.login || "Anonymous User"),
+        time: new Date().toLocaleString(),
+        from_email: orNA(user?.email, "Not provided"),
+        category: orNA(formData.category?.toUpperCase()),
+        title: orNA(formData.title),
+        description: orNA(formData.description),
+        steps: orNA(formData.steps),
+        expected_behavior: orNA(formData.expectedBehavior),
+        actual_behavior: orNA(formData.actualBehavior),
+        browser_info: orNA(formData.browserInfo),
+        additional_info: orNA(formData.additionalInfo, "None"),
       };
 
-      // Here you would typically send to your backend API
-      // For now, we'll simulate the email sending
-      console.log("Feedback data:", emailData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams,
+        EMAILJS_PUBLIC_KEY
+      );
+
       setSubmitted(true);
       setFormData({
         category: "bug",
@@ -157,7 +141,7 @@ This feedback was submitted through the gitRAG feedback form.
         steps: "",
         expectedBehavior: "",
         actualBehavior: "",
-        browserInfo: formData.browserInfo, // Keep browser info
+        browserInfo: formData.browserInfo, // keep this autofilled value
         additionalInfo: "",
       });
     } catch (error) {
@@ -217,7 +201,7 @@ This feedback was submitted through the gitRAG feedback form.
                   href="/ai"
                   className="bg-[#21262d] hover:bg-[#2d333b] border border-[#2ea04322] px-6 py-3 rounded-lg font-semibold text-gray-200 transition-all duration-300 transform hover:scale-105"
                 >
-                  Back to AI Chat
+                  Back to REPO Analysis
                 </a>
               </div>
             </div>
@@ -274,17 +258,13 @@ This feedback was submitted through the gitRAG feedback form.
             {feedbackCategories.map((category, i) => (
               <div
                 key={i}
-                className={`bg-[#21262d] border border-[#2ea04322] rounded-2xl p-6 flex flex-col gap-4 shadow-md hover:shadow-[#2ea04333] transition-transform duration-300 hover:scale-105 group ${
-                  formData.category === category.title.toLowerCase().replace(" ", "") ? "ring-2 ring-[#2ea043]" : ""
-                }`}
+                className={`bg-[#21262d] border border-[#2ea04322] rounded-2xl p-6 flex flex-col gap-4 shadow-md hover:shadow-[#2ea04333] transition-transform duration-300 hover:scale-105 group`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`${category.bgColor} p-3 rounded-xl`}>
                     <category.icon size={26} className={category.color} />
                   </div>
-                  <span className="font-bold text-lg text-gray-200">
-                    {category.title}
-                  </span>
+                  <span className="font-bold text-lg text-gray-200">{category.title}</span>
                 </div>
                 <div className="text-gray-400 group-hover:text-gray-200 transition">
                   {category.description}
@@ -298,9 +278,7 @@ This feedback was submitted through the gitRAG feedback form.
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Category Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Feedback Category *
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Feedback Category *</label>
                 <select
                   name="category"
                   value={formData.category}
@@ -316,9 +294,7 @@ This feedback was submitted through the gitRAG feedback form.
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Title *
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Title *</label>
                 <input
                   type="text"
                   name="title"
@@ -332,9 +308,7 @@ This feedback was submitted through the gitRAG feedback form.
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Description *
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Description *</label>
                 <textarea
                   name="description"
                   value={formData.description}
@@ -350,24 +324,20 @@ This feedback was submitted through the gitRAG feedback form.
               {formData.category === "bug" && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Steps to Reproduce
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Steps to Reproduce</label>
                     <textarea
                       name="steps"
                       value={formData.steps}
                       onChange={handleInputChange}
                       rows={3}
-                      placeholder="1. Go to...&#10;2. Click on...&#10;3. See error..."
+                      placeholder={`1. Go to...\n2. Click on...\n3. See error...`}
                       className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Expected Behavior
-                      </label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Expected Behavior</label>
                       <textarea
                         name="expectedBehavior"
                         value={formData.expectedBehavior}
@@ -379,9 +349,7 @@ This feedback was submitted through the gitRAG feedback form.
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Actual Behavior
-                      </label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Actual Behavior</label>
                       <textarea
                         name="actualBehavior"
                         value={formData.actualBehavior}
@@ -397,9 +365,7 @@ This feedback was submitted through the gitRAG feedback form.
 
               {/* Additional Information */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Additional Information
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Additional Information</label>
                 <textarea
                   name="additionalInfo"
                   value={formData.additionalInfo}
@@ -409,6 +375,7 @@ This feedback was submitted through the gitRAG feedback form.
                   className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2ea043] focus:border-transparent resize-vertical"
                 />
               </div>
+
               {/* Submit Button */}
               <div className="flex justify-center pt-4">
                 <button
