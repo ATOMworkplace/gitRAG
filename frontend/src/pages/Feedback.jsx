@@ -5,21 +5,9 @@ import { Bug, AlertTriangle, MessageSquare, Send, CheckCircle } from "lucide-rea
 import emailjs from "@emailjs/browser";
 
 // Resolve env vars for Vite / Next.js / CRA
-const EMAILJS_SERVICE_ID =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_EMAILJS_SERVICE_ID) ||
-  process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ||
-  process.env.REACT_APP_EMAILJS_SERVICE_ID;
-
-const EMAILJS_TEMPLATE_ID =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_EMAILJS_TEMPLATE_ID) ||
-  process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ||
-  process.env.REACT_APP_EMAILJS_TEMPLATE_ID;
-
-const EMAILJS_PUBLIC_KEY =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_EMAILJS_PUBLIC_KEY) ||
-  process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY ||
-  process.env.REACT_APP_EMAILJS_PUBLIC_KEY;
-
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 // --- Typing Animation for gitRAG ---
 function TypingGitRAG() {
   const text = "gitRAG";
