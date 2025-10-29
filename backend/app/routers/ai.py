@@ -10,7 +10,7 @@ from app.crud.active_repo import get_active_repo
 from app.crud.chat import (
     log_chat,
     get_chat_messages_for_namespace,
-    delete_chat_message,   # <--- Import delete_chat_message!
+    delete_chat_message,    
 )
 from app.schemas.chat import (
     ChatRequest, ChatResponse, ChatHistoryResponse

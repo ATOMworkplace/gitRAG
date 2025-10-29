@@ -3,7 +3,7 @@ from app.core.oauth import init_oauth
 from app.routers.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from app.routers import ai, repo
+from app.routers import ai, repo, discuss
 from app.utils.db import engine, Base
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -11,7 +11,6 @@ import os
 
 app = FastAPI()
 
-# 1. Init everything (not mounting static files yet!)
 init_oauth(app)
 print("[DEBUG][main.py] OAuth initialized.")
 Base.metadata.create_all(bind=engine)
@@ -39,10 +38,11 @@ app.add_middleware(
 )
 print("[DEBUG][main.py] Session middleware configured.")
 
-# 2. Register routers first!
+
 app.include_router(auth_router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(repo.router, prefix="/api")
+app.include_router(discuss.router, prefix="/api")
 print("[DEBUG][main.py] Routers included.")
 
 # 3. Now mount static files LAST (so /api/* never matches static handler)
