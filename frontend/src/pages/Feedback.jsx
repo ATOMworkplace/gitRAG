@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { Bug, AlertTriangle, MessageSquare, Send, CheckCircle } from "lucide-react";
 import emailjs from "@emailjs/browser";
 
-// Resolve env vars for Vite / Next.js / CRA
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
 const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
 const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
@@ -93,7 +92,8 @@ export default function Feedback() {
 
     if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
       
-      console.log(EMAILJS_PUBLIC_KEY)
+      console.log('Service ID:', import.meta.env.VITE_EMAILJS_SERVICE_ID);
+      console.log('All env vars:', import.meta.env);
       console.error("Missing EmailJS env vars. Check your .env and prefixes.");
       alert("Email service not configured. Please contact support.");
       setIsSubmitting(false);
