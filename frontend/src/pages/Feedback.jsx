@@ -47,7 +47,7 @@ function Footer({ user }) {
 }
 
 export default function Feedback() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth(); // MODIFIED: Added logout
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
     category: "bug",
@@ -134,8 +134,23 @@ export default function Feedback() {
             <img src="/logo.png" className="h-8 w-8 rounded-full" alt="gitRAG" />
             <TypingGitRAG />
           </div>
+          {/* MODIFIED: Added sidebar button */}
+          {!sidebarOpen && (
+            <button
+              className="z-50 p-0 outline-none border-none bg-transparent"
+              style={{ boxShadow: "none" }}
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open sidebar"
+            >
+              <img
+                src={user?.avatar_url || user?.picture || "/logo.png"}
+                className="h-8 w-8 rounded-full border border-[#2ea043] bg-[#161b22]"
+                alt="Profile"
+              />
+            </button>
+          )}
         </div>
-        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} onLogout={logout} /> {/* MODIFIED: Added onLogout */}
         <main className="flex flex-col flex-1 items-center justify-center bg-[#161b22] text-gray-200 p-4 sm:p-8 w-full">
           <div className="max-w-2xl w-full text-center">
             <div className="bg-[#21262d] border border-[#2ea04322] rounded-2xl p-8 shadow-lg">
@@ -173,8 +188,23 @@ export default function Feedback() {
           <img src="/logo.png" className="h-8 w-8 rounded-full" alt="gitRAG" />
           <TypingGitRAG />
         </div>
+        {/* MODIFIED: Added sidebar button */}
+        {!sidebarOpen && (
+          <button
+            className="z-50 p-0 outline-none border-none bg-transparent"
+            style={{ boxShadow: "none" }}
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
+          >
+            <img
+              src={user?.avatar_url || user?.picture || "/logo.png"}
+              className="h-8 w-8 rounded-full border border-[#2ea043] bg-[#161b22]"
+              alt="Profile"
+            />
+          </button>
+        )}
       </div>
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} onLogout={logout} /> {/* MODIFIED: Added onLogout */}
 
       <main className="flex flex-col flex-1 items-center bg-[#161b22] text-gray-200 p-4 sm:p-8 w-full">
         <div className="max-w-4xl w-full">
@@ -302,7 +332,7 @@ export default function Feedback() {
                   onChange={handleInputChange}
                   rows={3}
                   placeholder="Any additional context, screenshots, or information that might be helpful"
-                  className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-200"
+                  className="w-full bg-[#161b22] border border-[#2ea04322] rounded-lg px-4 py-3 text-gray-20EBF"
                 />
               </div>
 
