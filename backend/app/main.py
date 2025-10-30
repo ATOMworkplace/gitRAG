@@ -21,6 +21,7 @@ app.add_middleware(
         "https://git-rag.vercel.app",
         "https://www.git-rag.com",
         "https://gitrag-fo9z.onrender.com",
+        "http://localhost:8000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
