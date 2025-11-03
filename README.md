@@ -11,14 +11,6 @@ https://github.com/user-attachments/assets/99065742-a793-4ec5-8bb5-231f37d3d50e
 
 ---
 
-# Run Locally (production-style):
-- docker build -t gitrag .
-- docker run --env-file backend/.env -p 8000:8000 gitrag
-- Open http://localhost:8000
-
-
----
-
 
 ## Overview
 
