@@ -2,6 +2,7 @@
 import os
 import hashlib
 from typing import Iterable, Dict, List, Generator
+from multiprocessing import Pool  
 from app.core.config import (
     CHUNK_TOKENS,
     CHUNK_OVERLAP_TOKENS,
@@ -82,37 +83,54 @@ def chunk_text_to_chunks(file_path: str, text: str) -> Generator[Dict, None, Non
             break
         start_token_idx += step
 
+def _process_file_chunks(f: Dict) -> List[Dict]:
+    file_chunks = []
+    fname = f["filename"]
+    content = f["content"]
+
+    if _should_skip_file(fname):
+        return file_chunks
+    if not content or not content.strip():
+        return file_chunks
+
+    produced = 0
+    start_token_idx = 0
+    step = max(1, CHUNK_TOKENS - CHUNK_OVERLAP_TOKENS)
+
+    for piece in _token_stream_chunks(content, CHUNK_TOKENS, CHUNK_OVERLAP_TOKENS):
+        if not piece.strip():
+            continue
+        cid = _stable_chunk_id(fname, start_token_idx, piece)
+        file_chunks.append({
+            "text": piece,
+            "metadata": {
+                "file": fname,
+                "chunk_id": cid
+            }
+        })
+        produced += 1
+        if produced >= MAX_CHUNKS_PER_FILE:
+            break
+        start_token_idx += step
+    
+    return file_chunks
+
 def chunk_files_mem(files: Iterable[Dict]) -> List[Dict]:
     chunks: List[Dict] = []
     total_chunks = 0
-    for f in files:
-        fname = f["filename"]
-        content = f["content"]
-        if _should_skip_file(fname):
-            continue
-        if not content or not content.strip():
-            continue
-        produced = 0
-        start_token_idx = 0
-        step = max(1, CHUNK_TOKENS - CHUNK_OVERLAP_TOKENS)
-        for piece in _token_stream_chunks(content, CHUNK_TOKENS, CHUNK_OVERLAP_TOKENS):
-            if not piece.strip():
+    with Pool() as pool:
+        for file_chunks in pool.imap_unordered(_process_file_chunks, files):
+            
+            if not file_chunks:
                 continue
-            cid = _stable_chunk_id(fname, start_token_idx, piece)
-            chunks.append({
-                "text": piece,
-                "metadata": {
-                    "file": fname,
-                    "chunk_id": cid
-                }
-            })
-            produced += 1
-            total_chunks += 1
-            if produced >= MAX_CHUNKS_PER_FILE:
-                break
+
+            for chunk in file_chunks:
+                chunks.append(chunk)
+                total_chunks += 1
+                if total_chunks >= REPO_WIDE_CHUNK_BUDGET:
+                    break
+            
             if total_chunks >= REPO_WIDE_CHUNK_BUDGET:
                 break
-            start_token_idx += step
-        if total_chunks >= REPO_WIDE_CHUNK_BUDGET:
-            break
+
     return chunks
