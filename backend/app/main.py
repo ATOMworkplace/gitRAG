@@ -40,10 +40,8 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(repo.router, prefix="/api")
 app.include_router(discuss.router, prefix="/api")
-# 3. Now mount static files LAST (so /api/* never matches static handler)
 app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 
-# 4. SPA fallback for React Router: serve index.html for any non-API 404
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc):
     if request.url.path.startswith("/api"):

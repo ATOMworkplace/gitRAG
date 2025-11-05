@@ -7,7 +7,6 @@ from .config import SESSION_SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 
 oauth = OAuth()
 
 def init_oauth(app: FastAPI):
-    # Session for OAuth state and storing user
     app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 
     # Google OAuth
@@ -18,8 +17,8 @@ def init_oauth(app: FastAPI):
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
         client_kwargs={
             'scope': 'openid email profile',
-            # 'prompt': 'consent',  # (optional) can force Google to always ask account
-            # 'access_type': 'offline',  # (optional) for refresh_token
+            # 'prompt': 'consent',   
+            # 'access_type': 'offline',  
         },
     )
     # GitHub OAuth

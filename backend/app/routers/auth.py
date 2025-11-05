@@ -70,7 +70,6 @@ async def auth_callback(
             provider='github'
         )
 
-    # Upsert into DB and session
     get_or_create_user(db, user_info.model_dump())
     request.session['user'] = user_info.model_dump()
     return RedirectResponse(f"{FRONT_END_URL}/home")

@@ -1,5 +1,6 @@
 # app/routers/repo.py
-from fastapi import APIRouter, HTTPException, Body, Depends
+from fastapi import APIRouter, HTTPException, Body, Depends, Query
+from typing import Optional
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import json
@@ -7,11 +8,12 @@ import requests
 import os
 from dotenv import load_dotenv
 
-from app.services.github_service import list_and_get_files, get_file_content_from_github
+from app.services.github_service import list_and_get_files, get_file_content_from_github, list_repo_file_paths
 from app.services.chunking_service import chunk_files_mem
 from app.services.rag_service import upsert_chunks_to_pinecone, delete_pinecone_namespace
 from app.utils.db import get_db
-from app.crud.api_key import get_api_key
+
+from app.crud.api_key import get_api_key_by_provider
 from app.crud.repo_metadata import get_repo_metadata, upsert_repo_metadata
 from app.crud.active_repo import (
     get_active_repo,
@@ -19,9 +21,8 @@ from app.crud.active_repo import (
     delete_active_repo,
 )
 from app.crud.chat import delete_chat_namespace
-from app.services.repo_analysis import build_file_tree, analyze_repo # Moved import to top
+from app.services.repo_analysis import build_file_tree, build_file_tree_from_paths,analyze_repo 
 
-# Load environment variables from .env file for local development
 load_dotenv()
 
 class GetActiveRepoRequest(BaseModel):
@@ -41,10 +42,11 @@ async def get_repo_metadata_endpoint(
     body: GetActiveRepoRequest = Body(...),
     db: Session = Depends(get_db)
 ):
-    repo_url = get_active_repo(db, body.user_id)
-    if not repo_url:
+    repo_obj = get_active_repo(db, body.user_id)
+    if not repo_obj:
         raise HTTPException(status_code=400, detail="No active repo for user.")
 
+    repo_url = repo_obj.repo_url 
     meta = get_repo_metadata(db, repo_url)
     if not meta:
         raise HTTPException(status_code=404, detail="No metadata found for this repo. Please re-ingest.")
@@ -59,25 +61,38 @@ async def get_repo_metadata_endpoint(
 async def ingest_repo(
     repo_url: str = Body(...),
     user_id: str = Body(...),
+    provider: str = Body("openai"),
     db: Session = Depends(get_db)
 ):
-    """
-    Ingest a GitHub repo into Pinecone: fetch files, chunk, upsert.
-    Also collects rich GitHub analytics.
-    If another repo was previously active for this user, all previous repo data is deleted.
-    """
     try:
-        previous_repo_url = get_active_repo(db, user_id)
-        if previous_repo_url:
-            prev_repo = previous_repo_url.rstrip("/").split("/")[-1]
+        previous_repo_obj = get_active_repo(db, user_id)
+        if previous_repo_obj:
+            prev_repo_url = previous_repo_obj.repo_url
+            prev_provider = previous_repo_obj.provider
+            
+            prev_repo = prev_repo_url.rstrip("/").split("/")[-1]
             prev_namespace = f"{user_id}_{prev_repo}"
-            delete_pinecone_namespace(prev_namespace)
+            
+            try:
+                delete_pinecone_namespace(prev_namespace, prev_provider)
+            except TypeError:
+                delete_pinecone_namespace(prev_namespace)
+                
             delete_chat_namespace(db, prev_namespace)
             delete_active_repo(db, user_id)
 
-        openai_api_key = get_api_key(db, user_id)
-        if not openai_api_key:
-            raise HTTPException(status_code=401, detail="No OpenAI API key set for this user.")
+        api_key = None
+        try:
+            api_key = get_api_key_by_provider(db, user_id, provider)
+        except Exception as e:
+            print(f"/ingest_repo get_api_key_by_provider failed: {e}")
+
+            
+        if not api_key:
+            raise HTTPException(
+                status_code=401,
+                detail=f"No {provider} API key set for this user."
+            )
 
         github_token = os.getenv("GITHUB_TOKEN")
         auth_headers = {"Authorization": f"token {github_token}"} if github_token else {}
@@ -85,19 +100,20 @@ async def ingest_repo(
         parts = repo_url.rstrip("/").split("/")
         owner, repo = parts[-2], parts[-1]
 
-        # Fetch files with logging (token is passed and used in service)
         files = list_and_get_files(owner, repo, github_token=github_token)
         chunks = chunk_files_mem(files)
         namespace = f"{user_id}_{repo}"
-        upsert_chunks_to_pinecone(chunks, namespace, openai_api_key)
+        try:
+            upsert_chunks_to_pinecone(chunks, namespace, provider, api_key)
+        except TypeError:
+            upsert_chunks_to_pinecone(chunks, namespace, api_key)
 
         GITHUB_API = "https://api.github.com"
 
         def github_get(url, headers=auth_headers, desc=""):
             resp = requests.get(url, headers=headers)
             if resp.status_code == 403:
-                # Rate limit info
-                rl_resp = requests.get(f"{GITHUB_API}/rate_limit", headers=headers)
+                _ = requests.get(f"{GITHUB_API}/rate_limit", headers=headers)
             return resp
 
         repo_info = github_get(f"{GITHUB_API}/repos/{owner}/{repo}", desc="repo_info").json()
@@ -115,7 +131,7 @@ async def ingest_repo(
             readme_response = requests.get(f"{GITHUB_API}/repos/{owner}/{repo}/readme", headers=readme_headers)
             readme_response.raise_for_status()
             readme = readme_response.text
-        except Exception as e:
+        except Exception:
             readme = ""
 
         analytics = {
@@ -147,17 +163,11 @@ async def ingest_repo(
             "readme": readme[:3000] + ("..." if len(readme) > 3000 else ""),
         }
 
-        # Update repo metadata in database
         file_tree = build_file_tree(files)
         analytics_json = json.dumps(analytics)
         file_tree_json = json.dumps(file_tree)
-        
-        # NOTE: 'analyze_repo' in the original file appears to be a mistake here,
-        # it generates a dummy dependency graph, not the main analytics.
-        # This assumes you want to keep the rich analytics fetched from GitHub.
-        # I've kept the original logic but it might be worth reviewing.
-        repo_file_analytics = analyze_repo(files) 
-        dependency_graph_json = json.dumps(repo_file_analytics) # This is likely not the dependency graph
+        repo_file_analytics = analyze_repo(files)
+        dependency_graph_json = json.dumps(repo_file_analytics)
 
         upsert_repo_metadata(
             db=db,
@@ -166,11 +176,13 @@ async def ingest_repo(
             analytics_json=analytics_json,
             dependency_graph_json=dependency_graph_json,
         )
-
-        set_active_repo(db, user_id, repo_url)
-
+        
+        set_active_repo(db, user_id, repo_url, provider)
         return {"ok": True, "namespace": namespace}
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"ERROR: /ingest_repo failed: {e}")  
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/switch_repo")
@@ -180,13 +192,21 @@ async def switch_repo(
 ):
     user_id = body.user_id
     try:
-        repo_url = get_active_repo(db, user_id)
-        if repo_url:
+        repo_obj = get_active_repo(db, user_id)
+        if repo_obj:
+            repo_url = repo_obj.repo_url
+            provider = repo_obj.provider
+            
             repo = repo_url.rstrip("/").split("/")[-1]
             namespace = f"{user_id}_{repo}"
-            delete_pinecone_namespace(namespace)
+            try:
+                delete_pinecone_namespace(namespace, provider)
+            except TypeError:
+                delete_pinecone_namespace(namespace)
+                
             delete_chat_namespace(db, namespace)
             delete_active_repo(db, user_id)
+            
         return {"ok": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -196,7 +216,8 @@ async def get_active_repo_endpoint(
     body: GetActiveRepoRequest = Body(...),
     db: Session = Depends(get_db)
 ):
-    repo_url = get_active_repo(db, body.user_id)
+    repo_obj = get_active_repo(db, body.user_id)
+    repo_url = repo_obj.repo_url if repo_obj else None
     return {"repo_url": repo_url}
 
 @router.post("/get_file_content")
@@ -204,9 +225,11 @@ async def get_file_content(
     body: GetFileContentRequest,
     db: Session = Depends(get_db)
 ):
-    repo_url = get_active_repo(db, body.user_id)
-    if not repo_url:
+    repo_obj = get_active_repo(db, body.user_id)
+    if not repo_obj:
         raise HTTPException(status_code=400, detail="No active repo for user.")
+        
+    repo_url = repo_obj.repo_url 
     parts = repo_url.rstrip("/").split("/")
     owner, repo = parts[-2], parts[-1]
     try:
@@ -215,3 +238,20 @@ async def get_file_content(
         return {"content": content}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to fetch file content.")
+    
+@router.get("/files")
+def list_repo_files(owner: str = Query(...), repo: str = Query(...), github_token: Optional[str] = None):
+    try:
+        paths = list_repo_file_paths(owner, repo, github_token)
+        return {"owner": owner, "repo": repo, "count": len(paths), "files": paths}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to list files: {e}")
+
+@router.get("/tree")
+def get_repo_tree(owner: str = Query(...), repo: str = Query(...), github_token: Optional[str] = None):
+    try:
+        paths = list_repo_file_paths(owner, repo, github_token)
+        tree = build_file_tree_from_paths(paths)
+        return {"owner": owner, "repo": repo, "tree": tree}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to build tree: {e}")

@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
-
-// You can set VITE_BACKEND_URL in .env (e.g., http://localhost:8000)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 const AuthContext = createContext();
@@ -13,7 +11,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [provider, setProvider] = useState("openai");
   // Fetch user from backend session on mount
   useEffect(() => {
     //console.log("[DEBUG][AuthContext] Attempting to fetch user from backend:", `${BACKEND_URL}/api/user`);
@@ -40,7 +38,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, logout, loading, provider, setProvider }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,3 @@
-// src/components/Sidebar.jsx
 import React, { useRef, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -13,7 +12,9 @@ import {
 } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
+const RAW_BACKEND = import.meta.env.VITE_BACKEND_URL || "";
+const BACKEND_BASE = RAW_BACKEND.replace(/\/+$/, "");
+const api = (path) => `${BACKEND_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
 const NAV = [
   { label: "Home", href: "/home", icon: Home },
@@ -22,21 +23,36 @@ const NAV = [
   { label: "Feedback", href: "/feedback", icon: Users }
 ];
 
+const ToggleSwitch = ({ label, isOn, onToggle }) => (
+  <button
+    onClick={onToggle}
+    className={`flex items-center w-full px-3 py-2 rounded-lg transition-colors ${
+      isOn ? "bg-[#238636] text-white" : "bg-[#161b22] text-gray-300 hover:bg-[#20252b]"
+    }`}
+  >
+    <span className={`flex-1 text-left font-semibold`}>{label}</span>
+    <div className={`relative w-10 h-5 flex items-center rounded-full transition-all ${isOn ? "bg-green-300" : "bg-gray-500"}`}>
+      <div
+        className={`absolute w-4 h-4 bg-white rounded-full shadow-md transition-transform ${
+          isOn ? "translate-x-5" : "translate-x-1"
+        }`}
+      />
+    </div>
+  </button>
+);
 const Sidebar = ({ open, setOpen, onLogout }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, provider, setProvider } = useAuth();
+  
   const avatar = user?.avatar_url || user?.picture || "/logo.png";
   const location = useLocation();
   const ref = useRef(null);
-
-  // API Key state
   const [apiKeyInput, setApiKeyInput] = useState("");
-  const [storedApiKey, setStoredApiKey] = useState(""); // Masked key
+  const [storedApiKey, setStoredApiKey] = useState("");
   const [showInput, setShowInput] = useState(false);
   const [error, setError] = useState("");
   const [apiKeyValid, setApiKeyValid] = useState(false);
   const [validating, setValidating] = useState(false);
 
-  // Load masked key from backend
   useEffect(() => {
     const fetchKey = async () => {
       if (!user?.id) {
@@ -44,29 +60,30 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
         return;
       }
       try {
-        const res = await fetch(`${BACKEND_URL}api/ai/get_openai_key`, {
+        const res = await fetch(api("/api/ai/get_api_key"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: user.id })
+          body: JSON.stringify({ user_id: user.id, provider }) 
         });
         const data = await res.json();
-        if (res.ok && data.exists) {
-          setStoredApiKey(data.masked_key);
-        } else {
-          setStoredApiKey("");
-        }
-      } catch (err) {
+        if (res.ok && data.exists) setStoredApiKey(data.masked_key);
+        else setStoredApiKey("");
+      } catch {
         setStoredApiKey("");
       }
     };
     fetchKey();
-  }, [user?.id]);
+    setApiKeyInput("");
+    setShowInput(false);
+    setError("");
+    setApiKeyValid(false);
+    setValidating(false);
+  }, [user?.id, provider]);
 
-  // Validate & add key via backend
   const handleValidateKey = async () => {
     const key = apiKeyInput.trim();
     if (!key) {
-      setError("Please enter your OpenAI API key.");
+      setError("Please enter your API key.");
       return;
     }
     if (!user?.id) {
@@ -77,12 +94,13 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
     setError("");
     setApiKeyValid(false);
     try {
-      const res = await fetch(`${BACKEND_URL}api/ai/validate_openai_key`, {
+      const res = await fetch(api("/api/ai/validate_api_key"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          openai_api_key: key,
-          user_id: user.id
+          api_key: key,
+          user_id: user.id,
+          provider 
         })
       });
       const data = await res.json();
@@ -90,12 +108,10 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
         setApiKeyValid(true);
         setShowInput(false);
         setApiKeyInput("");
-        setError("");
-        // Refresh masked key from backend
-        const keyRes = await fetch(`${BACKEND_URL}api/ai/get_openai_key`, {
+        const keyRes = await fetch(api("/api/ai/get_api_key"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: user.id })
+          body: JSON.stringify({ user_id: user.id, provider }) // Uses global provider
         });
         const keyData = await keyRes.json();
         if (keyRes.ok && keyData.exists) setStoredApiKey(keyData.masked_key);
@@ -103,14 +119,13 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
       } else {
         setError(data.error || "Key validation failed.");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Could not validate key.");
     } finally {
       setValidating(false);
     }
   };
 
-  // Remove key from backend
   const handleRemoveKey = async () => {
     if (!user?.id) {
       setError("User not found. Please log in again.");
@@ -122,10 +137,10 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
     setShowInput(false);
 
     try {
-      const res = await fetch(`${BACKEND_URL}api/ai/delete_openai_key`, {
+      const res = await fetch(api("/api/ai/delete_api_key"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id })
+        body: JSON.stringify({ user_id: user.id, provider }) // Uses global provider
       });
       const data = await res.json();
       if (res.ok && data.deleted) {
@@ -133,15 +148,14 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
       } else {
         setError(data.detail || "Failed to delete API key from server.");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Could not remove key from server.");
     }
   };
 
-  // Close sidebar on outside click
   useEffect(() => {
     if (!open) return;
-    const handleClick = e => {
+    const handleClick = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener("mousedown", handleClick);
@@ -157,7 +171,6 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
         } rounded-l-3xl`}
         style={{ minWidth: "16rem" }}
       >
-        {/* User Info */}
         <div className="flex flex-col items-center mt-10 mb-8">
           <img src={avatar} className="h-16 w-16 rounded-full border-4 border-[#238636] shadow-lg" alt="User" />
           <span className="mt-3 text-lg font-semibold text-gray-200 break-all text-center">
@@ -172,10 +185,11 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
           </button>
         </div>
 
-        {/* Navigation Links */}
         <nav className="flex flex-col gap-2 px-3">
-          {NAV.map(item => {
-            const isActive = location.pathname === item.href || (item.href !== "/" && location.pathname.startsWith(item.href));
+          {NAV.map((item) => {
+            const isActive =
+              location.pathname === item.href ||
+              (item.href !== "/" && location.pathname.startsWith(item.href));
             const Icon = item.icon;
             return (
               <Link
@@ -193,9 +207,21 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
           })}
         </nav>
 
-        {/* API Key Management */}
         <div className="px-4 py-3 border-t border-gray-700 mt-6">
-          <span className="text-sm text-gray-400">OpenAI API Key</span>
+          <div className="mt-3 flex flex-col items-center gap-2">
+            <span className="text-sm text-gray-400 self-start">Provider</span>
+            <ToggleSwitch
+              label="OpenAI"
+              isOn={provider === "openai"}
+              onToggle={() => setProvider("openai")}
+            />
+            <ToggleSwitch
+              label="Gemini"
+              isOn={provider === "gemini"}
+              onToggle={() => setProvider("gemini")}
+            />
+          </div>
+          <span className="text-sm text-gray-400 mt-4 block">API Key</span>
 
           {storedApiKey ? (
             <div className="flex items-center gap-2 mt-2">
@@ -213,16 +239,22 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
             <label className="flex flex-col gap-1 mt-2">
               <span className="text-sm text-gray-300 flex items-center gap-2 font-semibold">
                 <KeyRound className="inline w-5 h-5 text-[#2ea043]" />
-                {validating ? "Validating key..." : apiKeyValid ? "Key valid!" : "Enter your OpenAI API key"}
+                {validating
+                  ? "Validating key..."
+                  : apiKeyValid
+                  ? "Key valid!"
+                  : `Enter your ${provider === "gemini" ? "Gemini" : "OpenAI"} API key`}
                 {apiKeyValid && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                {!apiKeyValid && apiKeyInput && !validating && <XCircle className="w-4 h-4 text-red-400" />}
+                {!apiKeyValid && apiKeyInput && !validating && (
+                  <XCircle className="w-4 h-4 text-red-400" />
+                )}
               </span>
               <div className="flex gap-2">
                 <input
                   type="password"
-                  placeholder="sk-..."
+                  placeholder={provider === "gemini" ? "AI..." : "sk-..."}
                   value={apiKeyInput}
-                  onChange={e => {
+                  onChange={(e) => {
                     setApiKeyInput(e.target.value);
                     setApiKeyValid(false);
                     if (error) setError("");
@@ -266,8 +298,12 @@ const Sidebar = ({ open, setOpen, onLogout }) => {
         </div>
       </div>
 
-      {/* Blurry Overlay */}
-      {open && <div className="fixed inset-0 z-30 backdrop-blur-[2px] bg-black/30" onClick={() => setOpen(false)} />}
+      {open && (
+        <div
+          className="fixed inset-0 z-30 backdrop-blur-[2px] bg-black/30"
+          onClick={() => setOpen(false)}
+        />
+      )}
     </>
   );
 };

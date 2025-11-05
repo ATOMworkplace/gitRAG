@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+// src/pages/Ai.jsx
+
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Sidebar from "../components/Sidebar";
 import LoadingScreen from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
@@ -7,9 +9,7 @@ import RepoPanel from "../components/RepoPanel";
 import ChatPanel from "../components/ChatPanel";
 import { Github, AlertTriangle } from "lucide-react";
 
-// NOTE: API base is now /api
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
-
 const loadingMessages = {
   ingest: [
     "Sneaking into your repo… hope there are no bugs!",
@@ -52,8 +52,56 @@ const loadingMessages = {
   ]
 };
 
+/** Inline progress UI with checkpoints */
+function IngestProgress({ visible, progress, checkpoints, onCancel }) {
+  if (!visible) return null;
+  const pct = Math.max(0, Math.min(100, progress));
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-[min(680px,90vw)] bg-[#0d1117] border border-[#21262d] rounded-2xl p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-white">Indexing your repo</h3>
+          <button
+            className="text-gray-400 hover:text-gray-200 text-sm px-2 py-1 rounded-md border border-transparent hover:border-[#30363d]"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+        <div className="w-full h-3 rounded-full bg-[#161b22] border border-[#30363d] overflow-hidden">
+          <div
+            className="h-full bg-[#2ea043] transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="mt-2 text-xs text-gray-400">{pct}% complete</div>
+
+        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {checkpoints.map((cp, idx) => (
+            <li
+              key={idx}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                cp.done
+                  ? "border-[#2ea043]/30 bg-[#1a2125]"
+                  : "border-[#2e3440]/40 bg-transparent"
+              }`}
+            >
+              <span className={`inline-flex h-2.5 w-2.5 rounded-full ${cp.done ? "bg-[#2ea043]" : "bg-[#6e7681]"}`} />
+              <span className={`text-sm ${cp.done ? "text-gray-100" : "text-gray-400"}`}>{cp.label}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[13px] text-gray-400">
+          Chat will be available once your entire repository has been indexed and analyzed. Please wait until the process is fully complete.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function Ai() {
-  const { user, logout } = useAuth();
+  const { user, logout, provider } = useAuth();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [repoUrl, setRepoUrl] = useState("");
   const [apiKeyExists, setApiKeyExists] = useState(undefined);
@@ -66,7 +114,26 @@ export default function Ai() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [globalLoading, setGlobalLoading] = useState({ show: false, messages: ["Loading..."], subtext: "" });
   const [submitted, setSubmitted] = useState(false);
+
   const chatRef = useRef();
+
+  // New: ingest progress UI state
+  const initialCheckpoints = useMemo(
+    () => ([
+      { key: "kickoff",    label: "Starting ingestion", done: false },
+      { key: "streaming",  label: "Streaming repo files", done: false },
+      { key: "chunking",   label: "Chunking content", done: false },
+      { key: "upserting",  label: "Upserting vectors", done: false },
+      { key: "analytics",  label: "Building repo analytics", done: false },
+      { key: "ready",      label: "Ready to chat", done: false },
+    ]),
+    []
+  );
+  const [ingestProgress, setIngestProgress] = useState(0);
+  const [checkpoints, setCheckpoints] = useState(initialCheckpoints);
+  const [showIngestOverlay, setShowIngestOverlay] = useState(false);
+  const progressTimerRef = useRef(null);
+  const pollTimerRef = useRef(null);
 
   useEffect(() => {
     async function checkActiveRepo() {
@@ -111,7 +178,6 @@ export default function Ai() {
       setGlobalLoading({ show: false, messages: [], subtext: "" });
     }
     checkActiveRepo();
-    // eslint-disable-next-line
   }, [user?.id]);
 
   async function fetchUserChatHistory(userId) {
@@ -158,25 +224,33 @@ export default function Ai() {
   }
 
   useEffect(() => {
-    const fetchKey = async () => {
+    const fetchAnyKey = async () => {
       if (!user?.id) {
         setApiKeyExists(false);
         return;
       }
       try {
-        const res = await fetch(`${BACKEND_URL}/api/ai/get_openai_key`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: user.id }),
-        });
-        const data = await res.json();
-        setApiKeyExists(res.ok && data.exists);
+        const [openaiRes, geminiRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/ai/get_api_key`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: user.id, provider: "openai" }),
+          }),
+          fetch(`${BACKEND_URL}/api/ai/get_api_key`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: user.id, provider: "gemini" }),
+          }),
+        ]);
+        const [openaiData, geminiData] = await Promise.all([openaiRes.json(), geminiRes.json()]);
+        const exists = (openaiRes.ok && openaiData?.exists) || (geminiRes.ok && geminiData?.exists);
+        setApiKeyExists(Boolean(exists));
       } catch {
         setApiKeyExists(false);
       }
     };
-    fetchKey();
-  }, [user?.id]);
+    fetchAnyKey();
+  }, [user?.id, globalLoading]);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -185,7 +259,6 @@ export default function Ai() {
   }, [chat, loadingChat]);
 
   async function fetchRepoMeta(repo_url) {
-    // This function now fetches data from YOUR backend, not GitHub's.
     try {
       const res = await fetch(`${BACKEND_URL}/api/repo/metadata`, {
         method: "POST",
@@ -194,15 +267,13 @@ export default function Ai() {
       });
 
       if (!res.ok) {
-        console.error("Failed to fetch repo metadata from backend");
         setRepoData(null);
         return;
       }
-      
-      const data = await res.json();
-      const analytics = data.analytics; // Use the analytics object from your backend
 
-      // Set the repo data state for the RepoPanel component
+      const data = await res.json();
+      const analytics = data.analytics;
+
       setRepoData({
         name: analytics.repo_name,
         owner: analytics.owner,
@@ -221,9 +292,38 @@ export default function Ai() {
           github: `https://github.com/${analytics.owner}`,
         },
       });
-    } catch (err) {
-      console.error("Error in fetchRepoMeta:", err);
+    } catch {
       setRepoData(null);
+    }
+  }
+
+  function startProgressUI() {
+    setShowIngestOverlay(true);
+    setIngestProgress(5);
+    setCheckpoints((prev) => prev.map(c => c.key === "kickoff" ? { ...c, done: true } : c));
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    progressTimerRef.current = setInterval(() => {
+      setIngestProgress((p) => (p < 90 ? p + 1 : p));
+    }, 400);
+    // staged checkpoints to give user visible milestones
+    setTimeout(() => setCheckpoints((prev) => prev.map(c => c.key === "streaming" ? { ...c, done: true } : c)), 1200);
+    setTimeout(() => setCheckpoints((prev) => prev.map(c => c.key === "chunking" ? { ...c, done: true } : c)), 3200);
+    setTimeout(() => setCheckpoints((prev) => prev.map(c => c.key === "upserting" ? { ...c, done: true } : c)), 5200);
+  }
+
+  function stopProgressUI(finalizeReady = false) {
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    if (finalizeReady) {
+      setIngestProgress(100);
+      setCheckpoints((prev) =>
+        prev.map((c) =>
+          c.key === "analytics" || c.key === "ready" ? { ...c, done: true } : c
+        )
+      );
+      setTimeout(() => setShowIngestOverlay(false), 600);
+    } else {
+      setShowIngestOverlay(false);
     }
   }
 
@@ -234,25 +334,58 @@ export default function Ai() {
       return;
     }
     if (!apiKeyExists) {
-      alert("Please add your OpenAI API key from the sidebar first.");
+      alert("Please add your OpenAI or Gemini API key from the sidebar first.");
       return;
     }
     setLoadingRepo(true);
     setGlobalLoading({ show: true, messages: loadingMessages.ingest, subtext: "Please do not close your browser. It's magic time." });
+
+    // reset progress UI
+    setCheckpoints(initialCheckpoints);
+    startProgressUI();
+
     try {
-      await fetch(`${BACKEND_URL}/api/repo/ingest_repo`, {
+      const res = await fetch(`${BACKEND_URL}/api/repo/ingest_repo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: user.id,
           repo_url: repoUrl,
+          provider: provider,
         }),
       });
-      setSubmitted(true);
-      fetchRepoMeta(repoUrl);
-      await fetchUserChatHistory(user.id);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Ingestion failed.");
+      }
+
+      // Begin polling for metadata readiness (built async on server)
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const r = await fetch(`${BACKEND_URL}/api/repo/metadata`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: user.id }),
+          });
+          if (r.ok) {
+            const meta = await r.json();
+            if (meta?.analytics?.repo_name) {
+              setCheckpoints((prev) => prev.map(c => c.key === "analytics" ? { ...c, done: true } : c));
+              await fetchRepoMeta(repoUrl);
+              await fetchUserChatHistory(user.id);
+              setSubmitted(true);
+              setCheckpoints((prev) => prev.map(c => c.key === "ready" ? { ...c, done: true } : c));
+              stopProgressUI(true);
+              setGlobalLoading({ show: false, messages: [], subtext: "" });
+            }
+          }
+        } catch {}
+      }, 1500);
     } catch (err) {
       alert("Error loading repo: " + err.message);
+      setSubmitted(false);
+      stopProgressUI(false);
     } finally {
       setLoadingRepo(false);
       setGlobalLoading({ show: false, messages: [], subtext: "" });
@@ -262,7 +395,7 @@ export default function Ai() {
   async function handleSend(e) {
     e.preventDefault();
     if (!msg.trim() || !user || !repoData || !apiKeyExists) {
-      alert("Please enter a message and ensure your OpenAI API key is set in the sidebar.");
+      alert("Please enter a message and ensure your OpenAI or Gemini API key is set in the sidebar.");
       return;
     }
     const newChat = [
@@ -284,8 +417,13 @@ export default function Ai() {
         body: JSON.stringify({
           user_id: user.id,
           message: msg,
+          provider: provider,
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Chat request failed.");
+      }
       const data = await res.json();
       const updatedChat = [
         ...newChat,
@@ -330,9 +468,15 @@ export default function Ai() {
     }
   }
 
-  const logoutWithClear = async () => logout();
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, []);
 
-  const showApiKeyBlur = apiKeyExists === false && !sidebarOpen;
+  const logoutWithClear = async () => logout();
+  const showApiKeyBlur = apiKeyExists === false;
 
   return (
     <div className="flex min-h-screen bg-[#161b22] flex-col relative overflow-hidden">
@@ -342,6 +486,17 @@ export default function Ai() {
           subtext={globalLoading.subtext}
         />
       )}
+
+      {/* Ingest progress overlay with checkpoints */}
+      <IngestProgress
+        visible={showIngestOverlay}
+        progress={ingestProgress}
+        checkpoints={checkpoints}
+        onCancel={() => {
+          stopProgressUI(false);
+        }}
+      />
+
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} onLogout={logoutWithClear} />
       <div className="flex items-center justify-between px-6 py-4 bg-[#161b22] border-b border-[#21262d] w-full z-20 h-16">
         <div className="flex items-center gap-2">
@@ -407,54 +562,43 @@ export default function Ai() {
                   </div>
                 </label>
                 <div className="text-xs text-gray-400 mt-2 italic">
-                  <b>Your OpenAI API key is stored securely and can be removed completely from our system whenever you want using the sidebar. It is only accessible to you.</b>
+                  <b>Your OpenAI or Gemini API key is stored securely and can be removed completely from our system whenever you want using the sidebar. It is only accessible to you.</b>
                 </div>
               </form>
-              {!apiKeyExists && sidebarOpen && <ApiKeyWarning />}
+              {apiKeyExists === false && !sidebarOpen && <ApiKeyWarning />}
               <div className="w-full max-w-2xl mx-auto mt-8 bg-[#21262d] border border-[#2ea043]/20 rounded-lg p-5 shadow-sm">
                 <h2 className="text-lg font-bold text-[#2ea043] mb-2 flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-[#fbbf24]" />
-                  Setup Guide: Using Your Own OpenAI API Key
+                  Setup Guide: Using Your Own API Key
                 </h2>
                 <ol className="text-sm text-gray-200 space-y-2 list-decimal list-inside pl-2 mb-3">
                   <li>
-                    <b>Sign up or log in to OpenAI</b> at{" "}
-                    <a
-                      href="https://platform.openai.com/signup"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#2ea043] underline"
-                    >
-                      platform.openai.com/signup
-                    </a>
-                    .
-                  </li>
-                  <li>
-                    Go to the{" "}
+                    For <b>OpenAI</b>, create a key at{" "}
                     <a
                       href="https://platform.openai.com/api-keys"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#2ea043] underline"
                     >
-                      API Keys page
-                    </a>{" "}
-                    and click <b>Create new secret key</b>.
+                      platform.openai.com/api-keys
+                    </a>
+                    .
                   </li>
                   <li>
-                    <b>Copy the key (starts with <code>sk-</code>)</b> and paste it in the sidebar. Remove it from the sidebar at any time.
+                    For <b>Gemini</b>, create a key at{" "}
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#2ea043] underline"
+                    >
+                      aistudio.google.com/app/apikey
+                    </a>
+                    .
                   </li>
-                  <li>
-                    <b>Never use a company or paid organization key</b>. Only use your <b>personal, low-value key</b>.
-                  </li>
+                  <li>Paste either key in the sidebar. Having any one of them is enough to proceed.</li>
+                  <li>Use only your personal key; you can remove it anytime from the sidebar.</li>
                 </ol>
-                <div className="text-xs text-gray-400 mt-2">
-                  Read more:{" "}
-                  <a href="https://platform.openai.com/docs/guides/keys" target="_blank" rel="noopener noreferrer" className="text-[#2ea043] underline">
-                    OpenAI API key docs
-                  </a>
-                  .
-                </div>
               </div>
             </div>
           )}

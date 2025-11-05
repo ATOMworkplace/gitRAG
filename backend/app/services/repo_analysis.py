@@ -1,9 +1,6 @@
 # app/services/repo_analysis.py
 
 def build_file_tree(files):
-    """
-    Build a nested file tree (dict) from a list of files with "filename" keys (paths with slashes).
-    """
     tree = {}
     for file in files:
         parts = file["filename"].split("/")
@@ -19,9 +16,6 @@ def build_file_tree(files):
     return tree
 
 def analyze_repo(files):
-    """
-    Generate analytics from in-memory file data (no disk access!).
-    """
     analytics = {
         "num_files": len(files),
         "file_extensions": {},
@@ -46,11 +40,24 @@ def analyze_repo(files):
 
     return analytics
 
-# Dummy dependency graph - improve later with AST or external analysis
 def dummy_dependency_graph(files):
-    # Just an example: lists all .py files and random links for demo
     nodes = [{"id": f["filename"]} for f in files if f["filename"].endswith(".py")]
     edges = []
     if len(nodes) >= 2:
         edges.append({"from": nodes[0]["id"], "to": nodes[1]["id"]})
     return {"nodes": nodes, "edges": edges}
+
+def build_file_tree_from_paths(paths: list[str]):
+    tree = {}
+    for p in paths:
+        parts = p.split("/")
+        cur = tree
+        for i, part in enumerate(parts):
+            is_file = i == len(parts) - 1
+            if is_file:
+                cur[part] = None
+            else:
+                if part not in cur or not isinstance(cur[part], dict):
+                    cur[part] = {}
+                cur = cur[part]
+    return tree
