@@ -138,24 +138,45 @@ def list_and_get_files(owner, repo, extensions=None, github_token=None):
             fobj.close()
     return files_out
 
-def get_file_content_from_github(owner, repo, file_path, branch="main", github_token=None):
+from urllib.parse import quote
+import requests
+
+def get_file_content_from_github(owner, repo, file_path, branch=None, github_token=None):
     session = requests.Session()
     headers = {'Accept': 'application/vnd.github.v3.raw'}
     if github_token:
         headers['Authorization'] = f'token {github_token}'
     session.headers.update(headers)
+
     if branch is None:
         repo_url = f"https://api.github.com/repos/{owner}/{repo}"
         repo_resp = session.get(repo_url)
         repo_resp.raise_for_status()
         branch = repo_resp.json().get("default_branch", "main")
-    raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{file_path}"
+
+    safe_path = quote(file_path, safe="/")
+    raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{safe_path}"
+
     resp = session.get(raw_url)
+    if not resp.ok and resp.status_code in (404, 400):
+        try:
+            repo_url = f"https://api.github.com/repos/{owner}/{repo}"
+            repo_resp = session.get(repo_url)
+            repo_resp.raise_for_status()
+            fallback_branch = repo_resp.json().get("default_branch", branch)
+            if fallback_branch and fallback_branch != branch:
+                raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{fallback_branch}/{safe_path}"
+                resp = session.get(raw_url)
+        except Exception:
+            pass
+
     if not resp.ok:
         if resp.status_code == 403:
             _ = session.get("https://api.github.com/rate_limit")
-        raise Exception(f"Failed to fetch file content for {file_path} (status {resp.status_code})")
+        raise Exception(f"Failed to fetch file content for {file_path} (status {resp.status_code}, url {raw_url})")
+
     return resp.text
+
 
 def list_repo_file_paths(owner: str, repo: str, github_token: str | None = None) -> List[str]:
     paths: List[str] = []

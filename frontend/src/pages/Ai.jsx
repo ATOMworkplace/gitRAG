@@ -334,7 +334,7 @@ export default function Ai() {
       return;
     }
     if (!apiKeyExists) {
-      alert("Please add your OpenAI or Gemini API key from the sidebar first.");
+      alert("Please add your OpenAI or Gemini API key from the sidebar first. If you have added then make sure to toggle on the correct provider");
       return;
     }
     setLoadingRepo(true);
