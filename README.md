@@ -95,10 +95,6 @@ I independently designed and built **gitRAG**—an end-to-end, multi-tenant plat
    - Repo analytics panel for high-level insights
 
 ---
-## Architecture
-
-<img width="2864" height="1856" alt="image" src="https://github.com/user-attachments/assets/33a09e0f-8310-4f4c-8078-7d73c5843247" />
-
 ## Example Use Cases
 
 - **Hackathons/open-source events:** Instantly understand any team repo or competition project.
