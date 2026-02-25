@@ -2,7 +2,6 @@
 
 **RAG-based GitHub Repo Analysis Platform**  
 *Analyse any public GitHub repository with LLM-powered chat and advanced semantic search.*
-https://gitrag-fo9z.onrender.com/
 ---
 
 
@@ -11,7 +10,7 @@ https://github.com/user-attachments/assets/99065742-a793-4ec5-8bb5-231f37d3d50e
 
 ---
 
-
+https://gitrag-fo9z.onrender.com/
 ## Overview
 
 ### **Situation**
